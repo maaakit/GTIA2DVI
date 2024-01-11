@@ -1,0 +1,89 @@
+
+.program gtia_luma_ng
+.define CSYNC_PIN  4
+.define OSC_PIN    5
+
+.wrap_target
+
+wait_next_csync_0:
+    wait 0 gpio CSYNC_PIN
+
+    set  X 31
+count_low_csync_cycles:
+    wait 1 gpio OSC_PIN  [31]
+
+    jmp pin send_data_with_line_num  [31]   ; pin is CSYNC (jupm if its high)
+    jmp X-- count_low_csync_cycles   [31]   ; loops to count more cycles
+                                            ; long ROW_CNT here (vblank)
+    mov Y, !NULL                            ; reset ROW_CNT
+.wrap
+send_data_with_line_num:
+    irq 0
+    in  Y 16                                ; send 16 bits of ROW_CNT (negative value)
+    mov X OSR                               ; move number of ecpected bytes from OSR to X register
+pixel_loop:
+    wait 0  gpio OSC_PIN  [22]              ; wait for high clk
+    in      pins 4        [31]              ; send 4 bits of luma
+    in      pins 4                          ; send 4 bits of luma
+    jmp     X-- pixel_loop                  ; loop over all expected pixels
+
+    jmp     Y-- wait_next_csync_0          ; go for next row
+
+
+
+% c-sdk {
+#include "hardware/clocks.h"
+#include "hardware/gpio.h"
+
+#define CSYNC_PIN 4
+#define OSC_PIN    5
+
+#define INPUT_PINS_MASK  0xff
+#define GTIA_LUM_NODATA   0xff
+
+#define SYS_CLOCK       295.2f
+
+
+static inline void gtia_luma_ng_program_init(PIO pio_inst, uint sm, uint offset, uint32_t line_length_bytes) {
+    ;// load program
+    pio_sm_config c = gtia_luma_ng_program_get_default_config(offset);
+    ;// set first program pin index
+    sm_config_set_in_pins(&c, 0); // for WAIT, IN
+    sm_config_set_jmp_pin(&c, CSYNC_PIN);
+
+    ;// configure autopush for every 32 bits
+    sm_config_set_in_shift(&c, true, true, 32);
+    sm_config_set_out_shift(&c, false, false, 32);
+    ;// join fifos 
+    ;//sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_RX);
+    ;// set clock divider to 1 for min delays
+
+    sm_config_set_clkdiv(&c, 1.0f  );
+
+    ;// init program
+    pio_sm_init(pio_inst, sm, offset, &c);
+
+    pio_sm_exec  (pio_inst, sm, 0xa04b);  //initial setup -> mov Y, !NULL
+    pio_inst->txf[sm] = line_length_bytes-1 ;
+    pio_sm_exec  (pio_inst, sm, 0x80a0);  //initial setup -> pull
+
+  ;//  pio_sm_exec(pio_inst, sm, 0x0008); //initial jump
+
+
+
+    ;// start program
+    pio_sm_set_enabled(pio1, sm, true);
+
+}
+
+
+static inline bool gtia_luma_ng_program_has_data(uint sm) {
+    return !pio_sm_is_rx_fifo_empty(pio1, sm);
+}
+
+static inline uint32_t gtia_luma_ng_program_get_data( uint sm) {
+    io_rw_32 *rxfifo_shift = (io_rw_32*)&pio1->rxf[sm] ;
+    return (uint32_t)*rxfifo_shift;
+}
+
+%}

@@ -1,5 +1,3 @@
-// #include <stdio.h>
-// #include <stdlib.h>
 #include "cfg.h"
 #include <stdint.h>
 #include "pico/platform.h"

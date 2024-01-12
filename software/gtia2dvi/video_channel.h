@@ -1,6 +1,7 @@
 #include "gtia_luma_ng.pio.h"
 #include "gtia_chroma_ng.pio.h"
 #include "gtia_palette.h"
+#include "buttons.h"
 
 #define GTIA_LUMA_SM 0
 #define GTIA_COLOR_SM 1
@@ -62,6 +63,10 @@ void __not_in_flash("video_stream") process_video_stream()
         {
             // increase frame counter once per frame
             frame++;
+            btn_debounce();
+
+            plotf(399, 200, btn_pushed(BTN_A) ? GREEN: RED );
+            plotf(399, 202, btn_pushed(BTN_B) ? GREEN: RED );
         }
         if (row < 43 || row > 280)
         {

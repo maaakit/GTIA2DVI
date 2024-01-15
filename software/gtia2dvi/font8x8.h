@@ -1,5 +1,8 @@
 #include <stdlib.h>
 
+#ifndef FONT8X8_H
+#define FONT8X8_H
+
 #define FONT_WIDTH   8 
 #define FONT_HEIGHT  8 
 #define FONT_FIRST_CHAR 32
@@ -107,3 +110,5 @@ static const uint8_t font_data[]  = {
     0x30, 0x38, 0x3C, 0x3E, 0x3E, 0x3C, 0x38, 0x30,  // Up arrow / triangle     0x80
     0x06, 0x0E, 0x1E, 0x3E, 0x3E, 0x1E, 0x0E, 0x06   // Down arrow / triangle   0x81
 };
+
+#endif

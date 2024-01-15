@@ -35,6 +35,15 @@ static void __not_in_flash("set_pos") set_pos(uint16_t x, uint16_t y)
 
 uint16_t framebuf[FRAME_WIDTH * FRAME_HEIGHT];
 
+static void inline fill_scren(int16_t color_rgb_565)
+{
+    uint32_t *buf = framebuf;
+    uint32_t count = FRAME_WIDTH * FRAME_HEIGHT / 2;
+    uint32_t val = color_rgb_565 << 16 + color_rgb_565;
+    while (count--)
+        *buf++ = val;
+}
+
 static void __not_in_flash("set_fore_col") set_fore_col(int16_t color_rgb_565)
 {
     gfx_state.fore_col = color_rgb_565;
@@ -45,23 +54,23 @@ static void __not_in_flash("set_back_col") set_back_col(int16_t color_rgb_565)
 }
 static inline void __not_in_flash("plot") plot(uint16_t x, uint16_t y, int16_t color_rgb_565)
 {
-    if (x<FRAME_WIDTH && y<FRAME_HEIGHT && x>0 && y>0)
-    framebuf[y * FRAME_WIDTH + x] = color_rgb_565;
+    if (x < FRAME_WIDTH && y < FRAME_HEIGHT && x > 0 && y > 0)
+        framebuf[y * FRAME_WIDTH + x] = color_rgb_565;
 }
 
 #define RGB565(R, G, B) ((((R) >> 3) & 0x1f) << 11) | ((((G) >> 2) & 0x3f) << 5) | (((B) >> 3) & 0x1f)
 #define LUM(X) RGB565(X, X, X)
 static const uint16_t colors[] = {
-	LUM(0), LUM(16), LUM(16 * 2), LUM(16 * 3), LUM(16 * 4), LUM(16 * 5),
-	LUM(16 * 6), LUM(16 * 7), LUM(16 * 8), LUM(16 * 9), LUM(16 * 10), LUM(16 * 11),
-	LUM(16 * 12), LUM(16 * 13), LUM(16 * 14), LUM(16 * 15), LUM(255),
-	BLACK, RED, BLUE, WHITE, GREEN, YELLOW, MAGENTA, CYAN};
+    LUM(0), LUM(16), LUM(16 * 2), LUM(16 * 3), LUM(16 * 4), LUM(16 * 5),
+    LUM(16 * 6), LUM(16 * 7), LUM(16 * 8), LUM(16 * 9), LUM(16 * 10), LUM(16 * 11),
+    LUM(16 * 12), LUM(16 * 13), LUM(16 * 14), LUM(16 * 15), LUM(255),
+    BLACK, RED, BLUE, WHITE, GREEN, YELLOW, MAGENTA, CYAN};
 
 static uint16_t *ptr_framebuf = framebuf;
 
 static inline void __not_in_flash("plotf") plotf(uint32_t x, uint32_t y, int16_t color_rgb_565)
 {
-	if (x < FRAME_WIDTH && y < FRAME_HEIGHT)
-		*(ptr_framebuf + (y * FRAME_WIDTH + x)) = color_rgb_565;
+    if (x < FRAME_WIDTH && y < FRAME_HEIGHT)
+        *(ptr_framebuf + (y * FRAME_WIDTH + x)) = color_rgb_565;
 }
 #endif // GFX_H

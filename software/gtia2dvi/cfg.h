@@ -7,6 +7,9 @@
 //#define DVI_TIMING dvi_timing_640x480p_50hz
 #define LED_PIN 25
 
+
+#define FORCE_MENU true
+
 //#define IGNORE_CHROMA
 
 

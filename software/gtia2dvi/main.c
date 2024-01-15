@@ -1,13 +1,14 @@
 #include "pico/stdlib.h"
 #include "hardware/vreg.h"
 #include "cfg.h"
+#include "font8x8.h"
 #include "gfx.h"
 #include "chroma.h"
 #include "flash_storage.h"
 #include "dvi_display.h"
 #include "video_channel.h"
 #include "buttons.h"
-#include "menu.h"
+#include "app_menu.h"
 
 int __not_in_flash_func(main)()
 {
@@ -19,7 +20,7 @@ int __not_in_flash_func(main)()
 		load_preset(0, (uint8_t *)fab2col);
 		preset_loaded = true;
 	}
-	bool menu_requested = btn_is_down(BTN_A);
+	bool menu_requested = btn_is_down(BTN_A) || FORCE_MENU;
 	sleep_ms(1000);
 	vreg_set_voltage(VREG_VSEL);
 	sleep_ms(1000);
@@ -30,7 +31,7 @@ int __not_in_flash_func(main)()
 	setup_display();
 
 	if (menu_requested){
-		menu_show();
+		main_menu_show();
 	}
 	
 

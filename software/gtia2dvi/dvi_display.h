@@ -24,6 +24,8 @@ static void __not_in_flash_func(core1_scanline_callback)()
 	bufptr = &framebuf[FRAME_WIDTH * (scanline)];
 	queue_add_blocking_u32(&dvi0.q_colour_valid, &bufptr);
 	scanline = (scanline + 1) % FRAME_HEIGHT;
+
+	btn_debounce();
 }
 
 static void  __not_in_flash_func(setup_display)() {

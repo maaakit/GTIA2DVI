@@ -3,12 +3,21 @@
 #include "gtia_palette.h"
 #include "buttons.h"
 
+#ifndef VIDEO_CHANNEL_H
+#define VIDEO_CHANNEL_H
+
 #define GTIA_LUMA_SM 0
 #define GTIA_COLOR_SM 1
 #define PIO_LUMA pio1
 #define LUMA_DMA_CHANNEL 10
 #define CHROMA_DMA_CHANNEL 11
 #define LUMA_LINE_LENGTH_BYTES 202
+
+static inline void calibrate_luma();
+
+static inline void calibrate_chroma();
+
+static inline void wait_and_restart_dma();
 
 uint16_t luma_buf[LUMA_LINE_LENGTH_BYTES / 2];
 
@@ -31,116 +40,26 @@ static inline void setup_hwd()
     channel_config_set_write_increment(&c2, true);
     dma_channel_configure(CHROMA_DMA_CHANNEL, &c2, &chroma_buf, &pio1->rxf[GTIA_COLOR_SM], CHROMA_LINE_LENGTH, false);
 
+    pio_sm_restart(PIO_LUMA, GTIA_LUMA_SM);
+    pio_sm_restart(pio1, GTIA_COLOR_SM);
     uint offset_lm = pio_add_program(PIO_LUMA, &gtia_luma_ng_program);
     uint offset_ch = pio_add_program(pio1, &gtia_chroma_ng_program);
     gtia_chroma_ng_program_init(GTIA_COLOR_SM, offset_ch, CHROMA_LINE_LENGTH);
     gtia_luma_ng_program_init(PIO_LUMA, GTIA_LUMA_SM, offset_lm, LUMA_LINE_LENGTH_BYTES);
 }
 
-void __not_in_flash("video_stream") process_video_stream()
+static inline void wait_and_restart_dma()
 {
-    chroma_init(true);
-
-    setup_hwd();
-
-    uint16_t row;
-    plot(399, 239, GREEN);
-    while (true)
-    {
-        // wait for both DMA channels
-        dma_channel_wait_for_finish_blocking(LUMA_DMA_CHANNEL);
-        dma_channel_wait_for_finish_blocking(CHROMA_DMA_CHANNEL);
-        // restart DMA channels
-        dma_channel_set_write_addr(CHROMA_DMA_CHANNEL, &chroma_buf[buf_seq], true);
-        dma_channel_set_write_addr(LUMA_DMA_CHANNEL, &luma_buf, true);
-
-        // swap buffer
-        buf_seq = (buf_seq + 1) % 2;
-
-        // pio returns line as egative number so we must correct this
-        row = -luma_buf[0];
-        if (row == 10)
-        {
-            // increase frame counter once per frame
-            frame++;
-            btn_debounce();
-
-            plotf(399, 200, btn_pushed(BTN_A) ? GREEN: RED );
-            plotf(399, 202, btn_pushed(BTN_B) ? GREEN: RED );
-        }
-        if (row < 43 || row > 280)
-        {
-            // skip rows outside view port
-            continue;
-        }
-        draw_luma_and_chroma(row);
-    }
+    // wait for both DMA channels
+    dma_channel_wait_for_finish_blocking(LUMA_DMA_CHANNEL);
+    dma_channel_wait_for_finish_blocking(CHROMA_DMA_CHANNEL);
+    // restart DMA channels
+    dma_channel_set_write_addr(CHROMA_DMA_CHANNEL, &chroma_buf[buf_seq], true);
+    dma_channel_set_write_addr(LUMA_DMA_CHANNEL, &luma_buf, true);
 }
 
-void __not_in_flash_func(calibrate_chroma)()
-{
-    chroma_init(false);
 
-    setup_hwd();
-
-    uint16_t row;
-    plot(399, 239, GREEN);
-    while (true)
-    {
-        dma_channel_wait_for_finish_blocking(LUMA_DMA_CHANNEL);
-        dma_channel_wait_for_finish_blocking(CHROMA_DMA_CHANNEL);
-        dma_channel_set_write_addr(CHROMA_DMA_CHANNEL, &chroma_buf[buf_seq], true);
-        dma_channel_set_write_addr(LUMA_DMA_CHANNEL, &luma_buf, true);
-
-        buf_seq = (buf_seq + 1) % 2;
-
-        row = -luma_buf[0];
-        if (row == 10)
-        {
-            frame++;
-        }
-        if (row < 43 || row > 280)
-        {
-            continue;
-        }
-
-#ifdef DRAW_LUMA
-        uint16_t x = 0;
-        uint16_t y = row - 43;
-        for (uint8_t i = 8; i <= (LUMA_LINE_LENGTH_BYTES / 2); i++)
-        {
-            uint16_t c = luma_buf[i];
-
-            uint8_t pxl = c & 0xf;
-            plot(x++, y, colors[pxl]);
-            pxl = (c >> 4) & 0xf;
-            plot(x++, y, colors[pxl]);
-            pxl = (c >> 8) & 0xf;
-            plot(x++, y, colors[pxl]);
-            pxl = (c >> 12) & 0xf;
-            plot(x++, y, colors[pxl]);
-        }
-
-        if (frame == 1000 && row == 100)
-        {
-            sleep_us(1000);
-            plot(393, 239, BLUE);
-        }
-#else
-        if (!chroma_calibration_finished())
-        {
-            chroma_calibrate(row);
-        }
-        else
-        {
-            draw_luma_and_chroma(row);
-        }
-
-#endif
-    }
-}
-
-inline void __not_in_flash_func(draw_luma_and_chroma)(uint16_t row)
+static inline void __not_in_flash_func(draw_luma_and_chroma)(uint16_t row)
 {
     uint32_t y = row - 43;
     uint32_t matched = 0;
@@ -185,6 +104,140 @@ inline void __not_in_flash_func(draw_luma_and_chroma)(uint16_t row)
         *ptr++ = col565;
     }
 }
+
+
+void __not_in_flash_func(process_video_stream)()
+{
+    chroma_init(true);
+
+    setup_hwd();
+
+    uint16_t row;
+    plot(399, 239, GREEN);
+    while (true)
+    {
+        wait_and_restart_dma();
+
+        // swap buffer
+        buf_seq = (buf_seq + 1) % 2;
+
+        // pio returns line as negative number so we must correct this
+        row = -luma_buf[0];
+        if (row == 10)
+        {
+            // increase frame counter once per frame
+            frame++;
+
+            plotf(399, 200, btn_pushed(BTN_A) ? GREEN : RED);
+            plotf(399, 202, btn_pushed(BTN_B) ? GREEN : RED);
+        }
+        if (row < 43 || row > 280)
+        {
+            // skip rows outside view port
+            continue;
+        }
+        draw_luma_and_chroma(row);
+    }
+}
+
+static __attribute__((noinline)) void __not_in_flash_func(calibrate_luma)(bool (*handler)())
+{
+    setup_hwd();
+    uint16_t row;
+    bool notFinished = true;
+    while (notFinished)
+    {
+        wait_and_restart_dma();
+        row = -luma_buf[0];
+
+        if (row == 10)
+        {
+            notFinished = handler();
+        }
+
+        if (row < 60 || row > 159)
+        {
+            continue;
+        }
+
+        uint16_t x = 0;
+        uint16_t y = row - 60 + 140;
+        for (uint8_t i = 8; i <= (LUMA_LINE_LENGTH_BYTES / 2); i++)
+        {
+            uint16_t c = luma_buf[i];
+            uint8_t pxl = c & 0xf;
+            plot(x++, y, colors[pxl]);
+            pxl = (c >> 4) & 0xf;
+            plot(x++, y, colors[pxl]);
+            pxl = (c >> 8) & 0xf;
+            plot(x++, y, colors[pxl]);
+            pxl = (c >> 12) & 0xf;
+            plot(x++, y, colors[pxl]);
+        }
+    }
+}
+
+void __not_in_flash_func(calibrate_chroma)()
+{
+    chroma_init(false);
+
+    setup_hwd();
+
+    uint16_t row;
+    plot(399, 239, GREEN);
+    while (true)
+    {
+        wait_and_restart_dma();
+
+        buf_seq = (buf_seq + 1) % 2;
+
+        row = -luma_buf[0];
+        if (row == 10)
+        {
+            frame++;
+        }
+        if (row < 43 || row > 280)
+        {
+            continue;
+        }
+
+        // #ifdef DRAW_LUMA
+        //         uint16_t x = 0;
+        //         uint16_t y = row - 43;
+        //         for (uint8_t i = 8; i <= (LUMA_LINE_LENGTH_BYTES / 2); i++)
+        //         {
+        //             uint16_t c = luma_buf[i];
+
+        //             uint8_t pxl = c & 0xf;
+        //             plot(x++, y, colors[pxl]);
+        //             pxl = (c >> 4) & 0xf;
+        //             plot(x++, y, colors[pxl]);
+        //             pxl = (c >> 8) & 0xf;
+        //             plot(x++, y, colors[pxl]);
+        //             pxl = (c >> 12) & 0xf;
+        //             plot(x++, y, colors[pxl]);
+        //         }
+
+        //         if (frame == 1000 && row == 100)
+        //         {
+        //             sleep_us(1000);
+        //             plot(393, 239, BLUE);
+        //         }
+        // #else
+        // if (!chroma_calibration_finished())
+        // {
+        chroma_calibrate(row);
+        //         }
+        //         else
+        //         {
+        //             draw_luma_and_chroma(row);
+        //         }
+
+        // #endif
+    }
+}
+
+
 
 // not used
 void __not_in_flash("draw_luma_dma") draw_luma_dma()
@@ -272,3 +325,5 @@ void __not_in_flash("draw_line_number_histogram") draw_line_number_histogram()
         }
     }
 }
+
+#endif

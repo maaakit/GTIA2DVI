@@ -7,7 +7,7 @@
 // FLASH_SECTOR_SIZE     # The size of one sector, in bytes (the minimum amount you can erase)
 // FLASH_PAGE_SIZE       # The size of one page, in bytes (the mimimum amount you can write)
 
-#define PRESET_NUMBER 7
+#define PRESET_NUMBER 8
 
 #define FLASH_TARGET_OFFSET (PICO_FLASH_SIZE_BYTES - FLASH_SECTOR_SIZE * PRESET_NUMBER)
 #define PRESET_SIZE 4096

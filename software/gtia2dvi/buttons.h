@@ -8,11 +8,22 @@
 
 #define BTN_DOWN false
 
-#define BTN_DEBOUNCE_TIME 4
+#define BTN_DEBOUNCE_TIME 10
+#define BTN_DEBOUNCE_TIME_LONG 180
 
-int btn_down_frames[2] = {0, 0};
+static int btn_down_frames[2] = {0, 0};
 
-static inline void btn_init()
+enum btn_event
+{
+    NONE = 0,
+    BTN_A_SHORT = 10,
+    BTN_B_SHORT,
+    BTN_A_LONG = 20,
+    BTN_B_LONG,
+};
+
+static inline void
+btn_init()
 {
     gpio_init(BTN_A);
     gpio_init(BTN_B);
@@ -21,7 +32,9 @@ static inline void btn_init()
     gpio_pull_up(BTN_B);
 }
 
-static inline void btn_debounce()
+static enum btn_event lastEvent = NONE;
+
+inline void btn_debounce()
 {
     for (int i = 0; i < 2; i++)
     {
@@ -31,9 +44,30 @@ static inline void btn_debounce()
         }
         else
         {
+            int current_time = btn_down_frames[i];
+            // if (current_time > BTN_DEBOUNCE_TIME_LONG)
+            // {
+            //     lastEvent = BTN_A_LONG + i;
+            //     btn_down_frames[i] = 0;
+            //     continue;
+            // }
+            if (current_time > BTN_DEBOUNCE_TIME)
+            {
+                lastEvent = BTN_A_SHORT + i;
+                btn_down_frames[i] = 0;
+                continue;
+            }
             btn_down_frames[i] = 0;
         }
     }
+}
+
+static inline enum btn_event btn_last_event()
+{
+    enum btn_event last = lastEvent;
+    // clear
+    lastEvent = NONE;
+    return last;
 }
 
 static inline bool btn_pushed(uint btn)

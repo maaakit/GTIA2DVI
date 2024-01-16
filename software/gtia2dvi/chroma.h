@@ -257,7 +257,7 @@ static inline void __not_in_flash_func(chroma_calibrate)(uint16_t row)
             c_step = END;
             //  plot(393, 239, BLUE);
             plot(391, 239, YELLOW);
-            save_preset(0, fab2col);
+            save_preset(fab2col);
   
         }
     }

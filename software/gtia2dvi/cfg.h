@@ -1,3 +1,8 @@
+
+
+#ifndef CFG_H
+#define CFG_H
+
 //#define PALETTE TRUE
 #define FRAME_WIDTH 400
 #define FRAME_HEIGHT 240
@@ -8,10 +13,23 @@
 #define LED_PIN 25
 
 
-#define FORCE_MENU true
+#define FORCE_MENU false
 
 //#define IGNORE_CHROMA
 
-
 #define INVALID_CHROMA_HANDLER (gtia_palette[luma])
 //#define INVALID_CHROMA_HANDLER (YELLOW)
+
+
+
+
+struct AppConfig
+{
+    bool enableChroma
+};
+
+
+
+struct AppConfig appcfg = {false};
+
+#endif

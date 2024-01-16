@@ -58,7 +58,6 @@ static inline void wait_and_restart_dma()
     dma_channel_set_write_addr(LUMA_DMA_CHANNEL, &luma_buf, true);
 }
 
-
 static inline void __not_in_flash_func(draw_luma_and_chroma)(uint16_t row)
 {
     uint32_t y = row - 43;
@@ -77,13 +76,13 @@ static inline void __not_in_flash_func(draw_luma_and_chroma)(uint16_t row)
 
         luma = (c >> 4) & 0xf;
         chroma_sample_ptr++;
-#ifndef IGNORE_CHROMA
+
         matched = match_color(*chroma_sample_ptr, row);
         if (matched == -1)
         {
             matched = match_color(*(ptr + 1), row);
         }
-#endif
+
         col565 = matched != -1 ? gtia_palette[matched * 16 + luma] : INVALID_CHROMA_HANDLER;
         *ptr++ = col565;
 
@@ -93,18 +92,35 @@ static inline void __not_in_flash_func(draw_luma_and_chroma)(uint16_t row)
 
         luma = (c >> 12) & 0xf;
         chroma_sample_ptr += ((i) & 0x1) + 1;
-#ifndef IGNORE_CHROMA
+
         matched = match_color(*chroma_sample_ptr, row);
         if (matched == -1)
         {
             matched = match_color(*(chroma_sample_ptr + 1), row);
         }
-#endif
         col565 = matched != -1 ? gtia_palette[matched * 16 + luma] : INVALID_CHROMA_HANDLER;
         *ptr++ = col565;
     }
 }
 
+static inline void __not_in_flash_func(draw_luma_only)(uint16_t row)
+{
+    uint16_t x = 0;
+    uint16_t y = row - 43;
+    for (uint8_t i = 8; i <= (LUMA_LINE_LENGTH_BYTES / 2); i++)
+    {
+        uint16_t c = luma_buf[i];
+
+        uint8_t pxl = c & 0xf;
+        plot(x++, y, colors[pxl]);
+        pxl = (c >> 4) & 0xf;
+        plot(x++, y, colors[pxl]);
+        pxl = (c >> 8) & 0xf;
+        plot(x++, y, colors[pxl]);
+        pxl = (c >> 12) & 0xf;
+        plot(x++, y, colors[pxl]);
+    }
+}
 
 void __not_in_flash_func(process_video_stream)()
 {
@@ -136,7 +152,14 @@ void __not_in_flash_func(process_video_stream)()
             // skip rows outside view port
             continue;
         }
-        draw_luma_and_chroma(row);
+        if (appcfg.enableChroma)
+        {
+            draw_luma_and_chroma(row);
+        }
+        else
+        {
+            draw_luma_only(row);
+        }
     }
 }
 
@@ -236,8 +259,6 @@ void __not_in_flash_func(calibrate_chroma)()
         // #endif
     }
 }
-
-
 
 // not used
 void __not_in_flash("draw_luma_dma") draw_luma_dma()

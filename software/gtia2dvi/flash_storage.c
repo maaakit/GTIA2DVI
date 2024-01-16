@@ -7,12 +7,12 @@
 // FLASH_SECTOR_SIZE     # The size of one sector, in bytes (the minimum amount you can erase)
 // FLASH_PAGE_SIZE       # The size of one page, in bytes (the mimimum amount you can write)
 
-#define PRESET_NUMBER 8
+#define PRESET_NUMBER 14
 
 #define FLASH_TARGET_OFFSET (PICO_FLASH_SIZE_BYTES - FLASH_SECTOR_SIZE * PRESET_NUMBER)
 #define PRESET_SIZE 4096
 
-int number_of_presets()
+bool preset_saved()
 {
 
     uint32_t *p, preset_adr, value;
@@ -25,36 +25,29 @@ int number_of_presets()
         value = *p;
         if (value != 0xffffffff)
         {
-            return 1;
+            return true;
         }
         p++;
     }
-    return 0;
+    return false;
 }
 
-void load_preset(int pres_number, uint8_t *address)
+void load_preset(uint8_t *address)
 {
     memcpy(address, XIP_BASE + FLASH_TARGET_OFFSET, PRESET_SIZE);
 }
 
-#define AIRCR_Register (*((volatile uint32_t*)(PPB_BASE + 0x0ED0C)))
-
-
-
-bool save_preset(int pres_number, uint8_t *address)
+void save_preset(uint8_t *address)
 {
-
     set_sys_clock_khz(125000, true);
+
+    sleep_ms(500);
+
+    flash_range_erase(FLASH_TARGET_OFFSET, PRESET_SIZE);
+
+    sleep_ms(100);
 
     flash_range_program(FLASH_TARGET_OFFSET, address, PRESET_SIZE);
 
-    uint8_t *preset_adr = XIP_BASE + FLASH_TARGET_OFFSET;
-    for (int i = 0; i < PRESET_SIZE; ++i)
-    {
-        if (address[i] != preset_adr[i])
-            return false;
-    }
-    // RP2040 reset
-    AIRCR_Register = 0x5FA0004;
+    watchdog_enable(1, 1);
 }
-

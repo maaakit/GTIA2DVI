@@ -12,32 +12,36 @@
 
 int __not_in_flash_func(main)()
 {
+	gpio_init(LED_PIN);
+	gpio_set_dir(LED_PIN, GPIO_OUT);
+
 	btn_init();
 
 	bool preset_loaded = false;
-	if (number_of_presets() > 0)
+	if (preset_saved())
 	{
-		load_preset(0, (uint8_t *)fab2col);
+		load_preset((uint8_t *)fab2col);
 		preset_loaded = true;
 	}
-	bool menu_requested = btn_is_down(BTN_A) || FORCE_MENU;
+	sleep_ms(100);
+	bool menu_requested = btn_is_down(BTN_A);
 	sleep_ms(1000);
 	vreg_set_voltage(VREG_VSEL);
 	sleep_ms(1000);
 
-	gpio_init(LED_PIN);
-	gpio_set_dir(LED_PIN, GPIO_OUT);
-
 	setup_display();
 
-	if (menu_requested){
+	if (menu_requested || FORCE_MENU)
+	{
 		main_menu_show();
 	}
-	
 
-	if (preset_loaded) {
+	if (preset_loaded)
+	{
 		process_video_stream();
-	} else {
+	}
+	else
+	{
 		calibrate_chroma();
 	}
 

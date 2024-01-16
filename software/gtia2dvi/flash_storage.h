@@ -5,8 +5,8 @@
 #ifndef FLASH_STORAGE_H
 #define FLASH_STORAGE_H
 
-int number_of_presets();
-void load_preset(int pres_number, uint8_t *address);
-bool save_preset(int pres_number, uint8_t *address);
+bool preset_saved();
+void load_preset(uint8_t *address);
+void save_preset(uint8_t *address);
 
 #endif  // FLASH_STORAGE_H

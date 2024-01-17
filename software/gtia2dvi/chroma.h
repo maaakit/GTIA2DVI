@@ -6,8 +6,11 @@
 #include "flash_storage.h"
 #include "gtia_palette.h"
 #include "chroma2_trans_table.h"
+#include "post_boot.h"
 
-uint8_t fab2col[2048][2] __attribute__((section(".uninitialized_data")));
+
+#ifndef CHROMA_H
+#define CHROMA_H
 
 #define CHROMA_LINE_LENGTH 251
 
@@ -257,7 +260,9 @@ static inline void __not_in_flash_func(chroma_calibrate)(uint16_t row)
             c_step = END;
             //  plot(393, 239, BLUE);
             plot(391, 239, YELLOW);
-            save_preset(fab2col);
+            //save_preset(fab2col);
+            setPostBootAction(WRITE_PRESET);
+            watchdog_enable(1,1);
   
         }
     }
@@ -306,3 +311,4 @@ static inline uint16_t __not_in_flash_func(decode_intr2)(uint32_t sample)
     return -1;
 }
 
+#endif

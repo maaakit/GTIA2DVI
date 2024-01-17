@@ -5,9 +5,9 @@
 add_executable(gtia2dvi
 	main.c
 )
-target_sources(gtia2dvi PRIVATE
-	${CMAKE_CURRENT_LIST_DIR}/flash_storage.c
-)
+# target_sources(gtia2dvi PRIVATE
+# 	${CMAKE_CURRENT_LIST_DIR}/flash_storage.c
+# )
 
 pico_generate_pio_header(gtia2dvi ${CMAKE_CURRENT_LIST_DIR}/gtia_luma_ng.pio)
 pico_generate_pio_header(gtia2dvi ${CMAKE_CURRENT_LIST_DIR}/gtia_chroma_ng.pio)
@@ -22,7 +22,8 @@ target_link_libraries(gtia2dvi
 	hardware_flash
 	libdvi
 )
-#pico_set_binary_type(gtia2dvi no_flash)
-
 # create map/bin/hex file etc.
 pico_add_extra_outputs(gtia2dvi)
+
+pico_set_binary_type(gtia2dvi no_flash)
+

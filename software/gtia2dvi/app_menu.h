@@ -2,53 +2,57 @@
 #include "video_channel.h"
 #include "menu.h"
 #include "pico/stdlib.h"
+#include "post_boot.h"
 
 void systemInfo();
 void lumaCalibration();
 void chromaCalibration();
-void option4();
+void chromaDecode();
 void factoryReset();
-void restart();
+void saveConfig();
+void force_restart();
 void lumaExit();
 
 struct MenuItem mainMenuItems[] = {
-    {"System Info", systemInfo},
-    {"Luma calibration", lumaCalibration},
+ //   {"System Info", systemInfo},
+ //   {"Luma calibration", lumaCalibration},
     {"Chroma calibration", chromaCalibration},
-    {"Enable chroma (experimental)", option4},
+    {"Chroma decode (experimental)", chromaDecode},
     {"Factory reset", factoryReset},
-    {"Restart", restart}};
+    {"Restart", force_restart},
+    {"Save changes", saveConfig}};
 
 struct Menu mainMenu = {
     .header = "ATARI GTIA2DVI MENU",
     .menuTitle = "Main Menu",
     .items = mainMenuItems,
-    .itemCount = sizeof(mainMenuItems) / sizeof(mainMenuItems[0])
-};
-
+    .itemCount = sizeof(mainMenuItems) / sizeof(mainMenuItems[0])};
 
 struct MenuItem lumaMenuItems[] = {
     {"Luma first delay value", lumaExit},
-    {"Increase", restart},
-    {"Decrease", restart},
     {"Luma second delay value", lumaExit},
-    {"Increase", restart},
-    {"Decrease", restart},
-    {"Save", restart},
-    {"Cancel", lumaExit}
-};
+    {"Restore", lumaExit},
+    {"Main menu", lumaExit}};
 struct Menu lumaMenu = {
     .header = "ATARI GTIA2DVI MENU",
     .menuTitle = "Luma Calibration",
     .items = lumaMenuItems,
-    .itemCount = sizeof(lumaMenuItems) / sizeof(lumaMenuItems[0])
-};
+    .itemCount = sizeof(lumaMenuItems) / sizeof(lumaMenuItems[0])};
+
+static inline void update_chroma_decode()
+{
+    set_pos(300, 3 * 10 + 30);
+    if (appcfg.enableChroma)
+        put_text("ON ");
+    else
+        put_text("OFF");
+}
 
 static inline void main_menu_show()
 {
     btn_init();
     drawMenu(&mainMenu);
-
+    update_chroma_decode();
     while (true)
     {
         sleep_us(20 * 1000);
@@ -58,7 +62,6 @@ static inline void main_menu_show()
     }
 }
 
-
 void systemInfo()
 {
     set_pos(10, 150);
@@ -67,15 +70,17 @@ void systemInfo()
 
 bool lumaContinue = true;
 
-void lumaExit(){
+void lumaExit()
+{
     lumaContinue = false;
 }
 
 bool lumaCalibrationHandler()
 {
     updateMenu(&lumaMenu);
-    if (lumaContinue ==false){
-        lumaContinue=true;
+    if (lumaContinue == false)
+    {
+        lumaContinue = true;
         return false;
     }
     return true;
@@ -90,15 +95,27 @@ void __not_in_flash_func(lumaCalibration)()
 
 void chromaCalibration()
 {
-    set_pos(10, 150);
-    put_text("chroma calibration");
     calibrate_chroma();
 }
 
-void option4()
+void chromaDecode()
 {
-    put_text("enable chroma");
+    appcfg.enableChroma = !appcfg.enableChroma;
+    update_chroma_decode();
 }
 
-void factoryReset() {}
-void restart() {}
+void saveConfig(){
+    setPostBootAction(WRITE_CONFIG);
+    force_restart();
+}
+
+
+void factoryReset() {
+    setPostBootAction(FACTORY_RESET);
+    force_restart();
+}
+
+void force_restart()
+{
+    watchdog_enable(1, 1);
+}

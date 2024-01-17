@@ -9,20 +9,37 @@
 #include "video_channel.h"
 #include "buttons.h"
 #include "app_menu.h"
+#include "post_boot.h"
 
 int __not_in_flash_func(main)()
 {
 	gpio_init(LED_PIN);
 	gpio_set_dir(LED_PIN, GPIO_OUT);
 
+
+	executePostBootAction();
+
 	btn_init();
 
 	bool preset_loaded = false;
-	if (preset_saved())
+
+	if (flash_config_saved())
 	{
-		load_preset((uint8_t *)fab2col);
-		preset_loaded = true;
+		flash_load_config(&appcfg);
+	} else {
+		cfg_init();
 	}
+
+
+
+	if (flash_preset_saved())
+	{
+		flash_load_preset((uint8_t *)fab2col);
+		preset_loaded = true;
+	} else {
+		appcfg.enableChroma = false;
+	}
+
 	sleep_ms(100);
 	bool menu_requested = btn_is_down(BTN_A);
 	sleep_ms(1000);
@@ -36,14 +53,7 @@ int __not_in_flash_func(main)()
 		main_menu_show();
 	}
 
-	if (preset_loaded)
-	{
-		process_video_stream();
-	}
-	else
-	{
-		calibrate_chroma();
-	}
+	process_video_stream();
 
 	__builtin_unreachable();
 }

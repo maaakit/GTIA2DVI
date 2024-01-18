@@ -136,13 +136,13 @@ static inline bool chroma_calibration_finished()
 
 void static inline __not_in_flash_func(draw_rullers)(uint16_t row)
 {
-    if (row == 279)
+    if (row == FIRST_ROW_TO_SHOW+ NO_ROWS_TO_SHOW +2)
     {
 
         for (int x = 0; x < 200; x++)
             plot(x + 39, 150, x % 2 == 0 ? WHITE : RED);
     }
-    if (row == 280)
+    if (row == FIRST_ROW_TO_SHOW + NO_ROWS_TO_SHOW + 3)
     {
 
         for (int x = 0; x < 200; x++)
@@ -160,7 +160,7 @@ static inline void __not_in_flash_func(chroma_calibrate)(uint16_t row)
     if (c_step == STEP1) // scan most right single color blocks
     {
         for (int q = 0; q < CHROMA_LINE_LENGTH; q++)
-            framebuf[(row - 43) * FRAME_WIDTH + q] = chroma_buf[buf_seq][q];
+            framebuf[(row - FIRST_ROW_TO_SHOW) * FRAME_WIDTH + q] = chroma_buf[buf_seq][q];
         if (row > 68)
         {
             int col = (row - 69) / 12;
@@ -181,7 +181,7 @@ static inline void __not_in_flash_func(chroma_calibrate)(uint16_t row)
 
                     // sample right block edge (outher -> color 0)
                     store_color(chroma_buf[buf_seq][239], row, 0);
-                    plot(252, row - 43, gtia_palette[col * 16 + 4]);
+                    plot(252, row - FIRST_ROW_TO_SHOW, gtia_palette[col * 16 + 4]);
                 }
             }
         }
@@ -199,8 +199,8 @@ static inline void __not_in_flash_func(chroma_calibrate)(uint16_t row)
         {
             for (uint i = 1; i < 16; i++)
             {
-                plot(39 + (i - 1) * 5, row - 43, GREEN);
-                plot(39 + 83 + (i - 1) * 5, row - 43, RED);
+                plot(39 + (i - 1) * 5, row - FIRST_ROW_TO_SHOW, GREEN);
+                plot(39 + 83 + (i - 1) * 5, row - FIRST_ROW_TO_SHOW, RED);
 
                 uint32_t smpl = chroma_buf[buf_seq][39 + (i - 1) * 5];
                 if (smpl != 0)
@@ -220,7 +220,7 @@ static inline void __not_in_flash_func(chroma_calibrate)(uint16_t row)
 
                 uint c = ((row - 169) / 6) + 1;
 
-                plot(39 + 3 + (i - 1) * 5, row - 43, gtia_palette[c * 16 + 8]);
+                plot(39 + 3 + (i - 1) * 5, row - FIRST_ROW_TO_SHOW, gtia_palette[c * 16 + 8]);
 
                 smpl = chroma_buf[buf_seq][39 + 3 + (i - 1) * 5];
                 if (smpl != 0)
@@ -251,7 +251,7 @@ static inline void __not_in_flash_func(chroma_calibrate)(uint16_t row)
         {
             int8_t matched = match_color(chroma_buf[buf_seq][q], row);
             uint16_t col565 = matched != -1 ? gtia_palette[matched * 16 + 4] : YELLOW;
-            framebuf[(row - 43) * FRAME_WIDTH + q] = col565;
+            framebuf[(row - FIRST_ROW_TO_SHOW) * FRAME_WIDTH + q] = col565;
         }
 
         draw_rullers(row);

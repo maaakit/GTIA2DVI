@@ -21,7 +21,6 @@ int __not_in_flash_func(main)()
 
 	btn_init();
 
-	bool preset_loaded = false;
 
 	if (flash_config_saved())
 	{

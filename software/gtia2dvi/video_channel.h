@@ -58,16 +58,20 @@ static inline void wait_and_restart_dma()
     dma_channel_set_write_addr(LUMA_DMA_CHANNEL, &luma_buf, true);
 }
 
-static inline void __not_in_flash_func(draw_luma_and_chroma)(uint16_t row)
+#define SCREEN_OFFSET_Y 20
+#define SCREEN_OFFSET_X 16
+#define LUMA_START_OFFSET 12
+
+static inline void __not_in_flash_func(draw_luma_and_chroma_row)(uint16_t row)
 {
-    uint32_t y = row - 43;
+    uint32_t y = row - FIRST_ROW_TO_SHOW + SCREEN_OFFSET_Y;
     uint32_t matched = 0;
-    uint16_t *ptr = framebuf + y * FRAME_WIDTH + 20;
+    uint16_t *ptr = framebuf + y * FRAME_WIDTH + SCREEN_OFFSET_X;
 
     uint32_t *chroma_sample_ptr = chroma_buf[buf_seq];
 
     chroma_sample_ptr += 27;
-    for (uint32_t i = 12; i <= (LUMA_LINE_LENGTH_BYTES / 2); i++)
+    for (uint32_t i = LUMA_START_OFFSET; i <= (LUMA_LINE_LENGTH_BYTES / 2); i++)
     {
         uint16_t c = luma_buf[i];
         uint16_t luma = c & 0xf;
@@ -103,14 +107,13 @@ static inline void __not_in_flash_func(draw_luma_and_chroma)(uint16_t row)
     }
 }
 
-static inline void __not_in_flash_func(draw_luma_only)(uint16_t row)
+static inline void __not_in_flash_func(draw_luma_only_row)(uint16_t row)
 {
-    uint16_t x = 0;
-    uint16_t y = row - 43;
-    for (uint8_t i = 8; i <= (LUMA_LINE_LENGTH_BYTES / 2); i++)
+    uint16_t x = SCREEN_OFFSET_X;
+    uint16_t y = row - FIRST_ROW_TO_SHOW + SCREEN_OFFSET_Y;
+    for (uint8_t i = LUMA_START_OFFSET; i <= (LUMA_LINE_LENGTH_BYTES / 2); i++)
     {
         uint16_t c = luma_buf[i];
-
         uint8_t pxl = c & 0xf;
         plot(x++, y, colors[pxl]);
         pxl = (c >> 4) & 0xf;
@@ -132,6 +135,13 @@ void __not_in_flash_func(process_video_stream)()
     plot(399, 239, GREEN);
     while (true)
     {
+        enum btn_event btn = btn_last_event();
+
+        if (btn == BTN_A_SHORT && preset_loaded)
+        {
+            appcfg.enableChroma = !appcfg.enableChroma;
+        }
+
         wait_and_restart_dma();
 
         // swap buffer
@@ -147,18 +157,18 @@ void __not_in_flash_func(process_video_stream)()
             plotf(399, 200, btn_pushed(BTN_A) ? GREEN : RED);
             plotf(399, 202, btn_pushed(BTN_B) ? GREEN : RED);
         }
-        if (row < 43 || row > 280)
+        if (row < FIRST_ROW_TO_SHOW || row >= FIRST_ROW_TO_SHOW + NO_ROWS_TO_SHOW)
         {
             // skip rows outside view port
             continue;
         }
         if (appcfg.enableChroma)
         {
-            draw_luma_and_chroma(row);
+            draw_luma_and_chroma_row(row);
         }
         else
         {
-            draw_luma_only(row);
+            draw_luma_only_row(row);
         }
     }
 }
@@ -219,113 +229,15 @@ void __not_in_flash_func(calibrate_chroma)()
         {
             frame++;
         }
-        if (row < 43 || row > 280)
+        if (row < FIRST_ROW_TO_SHOW || row >= FIRST_ROW_TO_SHOW + NO_ROWS_TO_SHOW)
         {
             continue;
         }
-
-        // #ifdef DRAW_LUMA
-        //         uint16_t x = 0;
-        //         uint16_t y = row - 43;
-        //         for (uint8_t i = 8; i <= (LUMA_LINE_LENGTH_BYTES / 2); i++)
-        //         {
-        //             uint16_t c = luma_buf[i];
-
-        //             uint8_t pxl = c & 0xf;
-        //             plot(x++, y, colors[pxl]);
-        //             pxl = (c >> 4) & 0xf;
-        //             plot(x++, y, colors[pxl]);
-        //             pxl = (c >> 8) & 0xf;
-        //             plot(x++, y, colors[pxl]);
-        //             pxl = (c >> 12) & 0xf;
-        //             plot(x++, y, colors[pxl]);
-        //         }
-
-        //         if (frame == 1000 && row == 100)
-        //         {
-        //             sleep_us(1000);
-        //             plot(393, 239, BLUE);
-        //         }
-        // #else
-        // if (!chroma_calibration_finished())
-        // {
         chroma_calibrate(row);
-        //         }
-        //         else
-        //         {
-        //             draw_luma_and_chroma(row);
-        //         }
-
-        // #endif
     }
 }
 
-// not used
-void __not_in_flash("draw_luma_dma") draw_luma_dma()
-{
-
-    gpio_init_mask(INPUT_PINS_MASK);
-    gpio_set_dir_in_masked(INPUT_PINS_MASK);
-
-    dma_channel_config c = dma_channel_get_default_config(LUMA_DMA_CHANNEL);
-    channel_config_set_transfer_data_size(&c, DMA_SIZE_32);
-    channel_config_set_dreq(&c, pio_get_dreq(pio1, GTIA_LUMA_SM, false));
-    channel_config_set_read_increment(&c, false);
-    channel_config_set_write_increment(&c, true);
-    channel_config_set_high_priority(&c, true);
-    dma_channel_configure(LUMA_DMA_CHANNEL, &c, &luma_buf, &pio1->rxf[GTIA_LUMA_SM], (LUMA_LINE_LENGTH_BYTES + 4) / 4, false);
-
-    dma_channel_config c2 = dma_channel_get_default_config(CHROMA_DMA_CHANNEL);
-    channel_config_set_transfer_data_size(&c2, DMA_SIZE_32);
-    channel_config_set_dreq(&c2, pio_get_dreq(pio1, GTIA_COLOR_SM, false));
-    channel_config_set_read_increment(&c2, false);
-    channel_config_set_write_increment(&c2, true);
-    channel_config_set_high_priority(&c2, true);
-    dma_channel_configure(CHROMA_DMA_CHANNEL, &c2, &chroma_buf, &pio1->rxf[GTIA_COLOR_SM], 32 / 2, false);
-
-    uint offset_lm = pio_add_program(pio1, &gtia_luma_ng_program);
-    uint offset_ch = pio_add_program(pio1, &gtia_chroma_ng_program);
-    gtia_chroma_ng_program_init(GTIA_COLOR_SM, offset_ch, 0);
-    gtia_luma_ng_program_init(pio1, GTIA_LUMA_SM, offset_lm, LUMA_LINE_LENGTH_BYTES);
-
-    uint16_t row;
-    plot(399, 239, GREEN);
-    while (true)
-    {
-        dma_channel_wait_for_finish_blocking(LUMA_DMA_CHANNEL);
-        dma_channel_set_write_addr(CHROMA_DMA_CHANNEL, &chroma_buf, true);
-        dma_channel_set_write_addr(LUMA_DMA_CHANNEL, &luma_buf, true);
-
-        row = -luma_buf[0];
-
-        if (row < 43 || row > 283)
-        {
-            continue;
-        }
-
-        uint16_t x = 0;
-        uint16_t y = row - 43;
-        for (uint8_t i = 8; i <= (LUMA_LINE_LENGTH_BYTES / 2); i++)
-        {
-            uint16_t c = luma_buf[i];
-
-            uint8_t pxl = c & 0xf;
-            plot(x++, y, colors[pxl]);
-            pxl = (c >> 4) & 0xf;
-            plot(x++, y, colors[pxl]);
-            pxl = (c >> 8) & 0xf;
-            plot(x++, y, colors[pxl]);
-            pxl = (c >> 12) & 0xf;
-            plot(x++, y, colors[pxl]);
-        }
-        for (int q = 0; q < 32; q++)
-        {
-            framebuf[(row - 43) * FRAME_WIDTH + q] = chroma_buf[q];
-        }
-    }
-}
-
-// uswful for debug problems
+// useful for debug problems
 void __not_in_flash("draw_line_number_histogram") draw_line_number_histogram()
 {
 

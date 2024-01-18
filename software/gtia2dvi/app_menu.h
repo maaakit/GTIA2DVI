@@ -50,7 +50,6 @@ static inline void update_chroma_decode()
 
 static inline void main_menu_show()
 {
-    btn_init();
     drawMenu(&mainMenu);
     update_chroma_decode();
     while (true)

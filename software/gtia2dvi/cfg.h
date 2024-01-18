@@ -6,6 +6,12 @@
 // #define PALETTE TRUE
 #define FRAME_WIDTH (768/2)
 #define FRAME_HEIGHT (576/2)
+
+#define FIRST_ROW_TO_SHOW 40
+#define NO_ROWS_TO_SHOW 248
+
+
+
 #define VREG_VSEL VREG_VOLTAGE_1_30
 
 #define LED_PIN 25
@@ -33,5 +39,7 @@ void cfg_init()
 {
     appcfg.enableChroma = false;
 }
+
+bool preset_loaded = false;
 
 #endif

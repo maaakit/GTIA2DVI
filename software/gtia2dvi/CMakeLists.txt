@@ -25,5 +25,4 @@ target_link_libraries(gtia2dvi
 # create map/bin/hex file etc.
 pico_add_extra_outputs(gtia2dvi)
 
-pico_set_binary_type(gtia2dvi no_flash)
-
+#pico_set_binary_type(gtia2dvi no_flash)

@@ -4,6 +4,7 @@
 #define CHOOSEN_OPTION_COLOR GREEN
 #define ACTIVE_OPTION_COLOR WHITE
 #define DISABLED_OPTION_COLOR CYAN
+#define MENU_ITEM_POS_Y(i)  ((i) * 10 + 30)
 
 struct MenuItem
 {
@@ -19,6 +20,8 @@ struct Menu
     int itemCount;
     int currentItem;
 };
+
+
 
 static inline void updateMenu(struct Menu *menu)
 {
@@ -40,7 +43,7 @@ static inline void updateMenu(struct Menu *menu)
 
     for (int i = 0; i < menu->itemCount; i++)
     {
-        set_pos(4, i * 10 + 30);
+        set_pos(4, MENU_ITEM_POS_Y(i));
         if (menu->currentItem == i)
         {
             set_fore_col(CHOOSEN_OPTION_COLOR);
@@ -67,7 +70,7 @@ static void drawMenu(struct Menu *menu)
 
     for (int i = 0; i < menu->itemCount; i++)
     {
-        set_pos(16, i * 10 + 30);
+        set_pos(16,  MENU_ITEM_POS_Y(i));
         put_text(menu->items[i].optionName);
     }
 }

@@ -41,7 +41,7 @@ struct Menu lumaMenu = {
 
 static inline void update_chroma_decode()
 {
-    set_pos(300, 3 * 10 + 30);
+    set_pos(300, MENU_ITEM_POS_Y(1));
     if (appcfg.enableChroma)
         put_text("ON ");
     else

@@ -8,7 +8,7 @@
 #include "dvi_display.h"
 #include "video_channel.h"
 #include "buttons.h"
-#include "app_menu.h"
+#include "ui/app_menu.h"
 #include "post_boot.h"
 
 int __not_in_flash_func(main)()

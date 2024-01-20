@@ -11,7 +11,6 @@
 #define NO_ROWS_TO_SHOW 248
 
 
-
 #define VREG_VSEL VREG_VOLTAGE_1_30
 
 #define LED_PIN 25

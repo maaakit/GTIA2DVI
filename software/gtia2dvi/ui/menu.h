@@ -1,10 +1,11 @@
-#include "gfx_text.h"
-#include "gfx.h"
+#include "../gfx_text.h"
+#include "../gfx.h"
 
 #define CHOOSEN_OPTION_COLOR GREEN
 #define ACTIVE_OPTION_COLOR WHITE
 #define DISABLED_OPTION_COLOR CYAN
-#define MENU_ITEM_POS_Y(i)  ((i) * 10 + 30)
+
+
 
 struct MenuItem
 {
@@ -14,14 +15,30 @@ struct MenuItem
 
 struct Menu
 {
-    const char *header;
-    const char *menuTitle;
     struct MenuItem *items;
     int itemCount;
     int currentItem;
+    int posX;
+    int posY;
 };
 
+struct TextBox
+{
+    const char *text;
+    const uint16_t textColor;
+    bool center;
 
+    int posX;
+    int posY;
+    int width;
+    int height;
+    const uint16_t frameColor;
+};
+
+static inline int menuItemPosY(struct Menu *menu, int item)
+{
+    return item * 10 + menu->posY;
+}
 
 static inline void updateMenu(struct Menu *menu)
 {
@@ -30,7 +47,7 @@ static inline void updateMenu(struct Menu *menu)
     if (btn == BTN_A_SHORT)
     {
         menu->currentItem++;
-        plot(1,menu->currentItem+10,GREEN);
+        //   plot(1,menu->currentItem+10,GREEN);
         if (menu->currentItem >= menu->itemCount)
         {
             menu->currentItem = 0;
@@ -43,7 +60,7 @@ static inline void updateMenu(struct Menu *menu)
 
     for (int i = 0; i < menu->itemCount; i++)
     {
-        set_pos(4, MENU_ITEM_POS_Y(i));
+        set_pos(menu->posX, menuItemPosY(menu, i));
         if (menu->currentItem == i)
         {
             set_fore_col(CHOOSEN_OPTION_COLOR);
@@ -56,21 +73,24 @@ static inline void updateMenu(struct Menu *menu)
     }
 }
 
+static void drawTextBox(struct TextBox *tb){
+    box(tb->posX, tb->posY, tb->width, tb->height, tb->frameColor);
+
+    set_fore_col(tb->textColor);
+    if ( tb->center) {
+       set_pos(tb->posX + (tb->width / 2) - strlen(tb->text) * 8 / 2, tb->posY + 4);
+    }
+    put_text(tb->text);
+}
+
 static void drawMenu(struct Menu *menu)
 {
-    fill_scren(BLACK);
-    plot(1, 1, RED);
-    set_pos(4, 4);
-    set_fore_col(YELLOW);
-    put_text(menu->header);
-    set_pos(4, 16);
-    set_fore_col(YELLOW);
-    put_text(menu->menuTitle);
+    set_pos(menu->posX , menu->posY );
     set_fore_col(WHITE);
 
     for (int i = 0; i < menu->itemCount; i++)
     {
-        set_pos(16,  MENU_ITEM_POS_Y(i));
+        set_pos(menu->posX + 16, menuItemPosY(menu, i));
         put_text(menu->items[i].optionName);
     }
 }

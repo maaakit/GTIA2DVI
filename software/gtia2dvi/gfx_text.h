@@ -5,7 +5,8 @@
 
 static void __not_in_flash("put_char") put_char(char ascii)
 {
-    if (ascii<FONT_FIRST_CHAR || ascii> (FONT_FIRST_CHAR+FONT_CHARS_NUMBER )){
+    if (ascii < FONT_FIRST_CHAR || ascii > (FONT_FIRST_CHAR + FONT_CHARS_NUMBER))
+    {
         return;
     }
     for (uint8_t xx = 0; xx < FONT_WIDTH; xx++)
@@ -27,7 +28,6 @@ static void __not_in_flash("put_char") put_char(char ascii)
     }
     gfx_state.posx = gfx_state.posx + FONT_WIDTH;
 }
-
 
 static void __not_in_flash("put_text") put_text(char *str)
 {
@@ -84,21 +84,8 @@ static void __not_in_flash("check_space") check_space()
     }
 }
 
-static void __not_in_flash("text_block_print") text_block_print(char *str)
-{
-    check_space();
 
-    set_pos(tb.posx + tb.c_pos_x * FONT_WIDTH, tb.posy + tb.c_pos_y * FONT_HEIGHT);
-    while (*str != '\0')
-    {
-        put_char(*str);
-        tb.c_pos_x++;
-        check_space();
-        str++;
-    }
-}
-
-static void __not_in_flash("text_block_print_chr") text_block_print_chr(char c)
+static void text_block_print_chr(char c)
 {
     if (c == '\r')
     {
@@ -117,10 +104,21 @@ static void __not_in_flash("text_block_print_chr") text_block_print_chr(char c)
     check_space();
 }
 
-static void __not_in_flash("text_block_println") text_block_println(char *str)
+static void __not_in_flash("text_block_print") text_block_print(char *str)
 {
-    text_block_println(str);
-    text_block_println("\r\n");
+    check_space();
+
+    while (*str != '\0')
+    {
+        text_block_print_chr(*str);
+        str++;
+    }
+}
+
+static void text_block_println(char *str)
+{
+    text_block_print(str);
+    text_block_print("\r\n");
 }
 static void __not_in_flash("text_block_scroll") text_block_scroll(char *str)
 {

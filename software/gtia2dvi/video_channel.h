@@ -13,15 +13,19 @@
 #define CHROMA_DMA_CHANNEL 11
 #define LUMA_LINE_LENGTH_BYTES 202
 
+#define SCREEN_OFFSET_Y 20
+#define SCREEN_OFFSET_X 16
+#define LUMA_START_OFFSET 12
+
 static inline void calibrate_luma();
 
 static inline void calibrate_chroma();
 
-static inline void wait_and_restart_dma();
+static inline void _wait_and_restart_dma();
 
 uint16_t luma_buf[LUMA_LINE_LENGTH_BYTES / 2];
 
-static inline void setup_hwd()
+static inline void _setup_gtia_interface()
 {
     gpio_init_mask(INPUT_PINS_MASK);
     gpio_set_dir_in_masked(INPUT_PINS_MASK);
@@ -48,7 +52,7 @@ static inline void setup_hwd()
     gtia_luma_ng_program_init(PIO_LUMA, GTIA_LUMA_SM, offset_lm, LUMA_LINE_LENGTH_BYTES);
 }
 
-static inline void wait_and_restart_dma()
+static inline void _wait_and_restart_dma()
 {
     // wait for both DMA channels
     dma_channel_wait_for_finish_blocking(LUMA_DMA_CHANNEL);
@@ -58,11 +62,8 @@ static inline void wait_and_restart_dma()
     dma_channel_set_write_addr(LUMA_DMA_CHANNEL, &luma_buf, true);
 }
 
-#define SCREEN_OFFSET_Y 20
-#define SCREEN_OFFSET_X 16
-#define LUMA_START_OFFSET 12
 
-static inline void __not_in_flash_func(draw_luma_and_chroma_row)(uint16_t row)
+static inline void _draw_luma_and_chroma_row(uint16_t row)
 {
     uint32_t y = row - FIRST_ROW_TO_SHOW + SCREEN_OFFSET_Y;
     uint32_t matched = 0;
@@ -107,7 +108,7 @@ static inline void __not_in_flash_func(draw_luma_and_chroma_row)(uint16_t row)
     }
 }
 
-static inline void __not_in_flash_func(draw_luma_only_row)(uint16_t row)
+static inline void _draw_luma_only_row(uint16_t row)
 {
     uint16_t x = SCREEN_OFFSET_X;
     uint16_t y = row - FIRST_ROW_TO_SHOW + SCREEN_OFFSET_Y;
@@ -129,10 +130,9 @@ void __not_in_flash_func(process_video_stream)()
 {
     chroma_init(true);
 
-    setup_hwd();
+    _setup_gtia_interface();
 
     uint16_t row;
-    plot(399, 239, GREEN);
     while (true)
     {
         enum btn_event btn = btn_last_event();
@@ -142,7 +142,7 @@ void __not_in_flash_func(process_video_stream)()
             appcfg.enableChroma = !appcfg.enableChroma;
         }
 
-        wait_and_restart_dma();
+        _wait_and_restart_dma();
 
         // swap buffer
         buf_seq = (buf_seq + 1) % 2;
@@ -154,8 +154,6 @@ void __not_in_flash_func(process_video_stream)()
             // increase frame counter once per frame
             frame++;
 
-            plotf(399, 200, btn_pushed(BTN_A) ? GREEN : RED);
-            plotf(399, 202, btn_pushed(BTN_B) ? GREEN : RED);
         }
         if (row < FIRST_ROW_TO_SHOW || row >= FIRST_ROW_TO_SHOW + NO_ROWS_TO_SHOW)
         {
@@ -164,23 +162,23 @@ void __not_in_flash_func(process_video_stream)()
         }
         if (appcfg.enableChroma)
         {
-            draw_luma_and_chroma_row(row);
+            _draw_luma_and_chroma_row(row);
         }
         else
         {
-            draw_luma_only_row(row);
+            _draw_luma_only_row(row);
         }
     }
 }
 
 static __attribute__((noinline)) void __not_in_flash_func(calibrate_luma)(bool (*handler)())
 {
-    setup_hwd();
+    _setup_gtia_interface();
     uint16_t row;
     bool notFinished = true;
     while (notFinished)
     {
-        wait_and_restart_dma();
+        _wait_and_restart_dma();
         row = -luma_buf[0];
 
         if (row == 10)
@@ -214,13 +212,13 @@ void __not_in_flash_func(calibrate_chroma)()
 {
     chroma_init(false);
 
-    setup_hwd();
+    _setup_gtia_interface();
 
     uint16_t row;
-    plot(399, 239, GREEN);
+
     while (true)
     {
-        wait_and_restart_dma();
+        _wait_and_restart_dma();
 
         buf_seq = (buf_seq + 1) % 2;
 

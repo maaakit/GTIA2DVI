@@ -5,8 +5,6 @@
 #define ACTIVE_OPTION_COLOR WHITE
 #define DISABLED_OPTION_COLOR CYAN
 
-
-
 struct MenuItem
 {
     char *optionName;
@@ -35,19 +33,18 @@ struct TextBox
     const uint16_t frameColor;
 };
 
-static inline int menuItemPosY(struct Menu *menu, int item)
+static inline int menu_item_pos_y(struct Menu *menu, int item)
 {
     return item * 10 + menu->posY;
 }
 
-static inline void updateMenu(struct Menu *menu)
+static inline void update_menu(struct Menu *menu)
 {
-    enum btn_event btn = btn_last_event();
+    enum BtnEvent btn = btn_last_event();
 
     if (btn == BTN_A_SHORT)
     {
         menu->currentItem++;
-        //   plot(1,menu->currentItem+10,GREEN);
         if (menu->currentItem >= menu->itemCount)
         {
             menu->currentItem = 0;
@@ -60,7 +57,7 @@ static inline void updateMenu(struct Menu *menu)
 
     for (int i = 0; i < menu->itemCount; i++)
     {
-        set_pos(menu->posX, menuItemPosY(menu, i));
+        set_pos(menu->posX, menu_item_pos_y(menu, i));
         if (menu->currentItem == i)
         {
             set_fore_col(CHOOSEN_OPTION_COLOR);
@@ -73,7 +70,7 @@ static inline void updateMenu(struct Menu *menu)
     }
 }
 
-static void drawTextBox(struct TextBox *tb){
+static void draw_text_box(struct TextBox *tb){
     box(tb->posX, tb->posY, tb->width, tb->height, tb->frameColor);
 
     set_fore_col(tb->textColor);
@@ -83,14 +80,14 @@ static void drawTextBox(struct TextBox *tb){
     put_text(tb->text);
 }
 
-static void drawMenu(struct Menu *menu)
+static void draw_menu(struct Menu *menu)
 {
     set_pos(menu->posX , menu->posY );
     set_fore_col(WHITE);
 
     for (int i = 0; i < menu->itemCount; i++)
     {
-        set_pos(menu->posX + 16, menuItemPosY(menu, i));
+        set_pos(menu->posX + 16, menu_item_pos_y(menu, i));
         put_text(menu->items[i].optionName);
     }
 }

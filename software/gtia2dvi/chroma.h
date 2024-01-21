@@ -5,9 +5,8 @@
 #include "hardware/interp.h"
 #include "flash_storage.h"
 #include "gtia_palette.h"
-#include "chroma2_trans_table.h"
+#include "chroma_trans_table.h"
 #include "post_boot.h"
-
 
 #ifndef CHROMA_H
 #define CHROMA_H
@@ -15,7 +14,7 @@
 #define CHROMA_LINE_LENGTH 251
 
 uint8_t buf_seq = 0;
-uint32_t chroma_buf[2][CHROMA_LINE_LENGTH+2];
+uint32_t chroma_buf[2][CHROMA_LINE_LENGTH + 2];
 
 enum calib_step
 {
@@ -43,22 +42,25 @@ static inline uint16_t __not_in_flash_func(decode_intr)(uint32_t sample)
     uint16_t *code_adr = interp0->pop[2]; // 1
     uint16_t data = *code_adr;            // 1
 
-    // if (((int16_t)data) < 0)
-    // {
-    //     return -1;
-    // }
-
-    // branch here                            // 1
+    #ifdef ERR_FAST_FAIL
+    if (((int16_t)data) < 0)
+    {
+        return -1;
+    }
+    #endif
+    
     uint16_t result = data; // 2
     interp0->add_raw[0] = data;
     interp0->ctrl[1] = (1 << 18) + (7 << 10) + (1 << 5) + 7;
     code_adr = interp0->pop[2]; // 1
     data = *code_adr;
 
-    // if (((int16_t)data) < 0)
-    // {
-    // return -1;
-    // }
+    #ifdef ERR_FAST_FAIL
+    if (((int16_t)data) < 0)
+    {
+        return -1;
+    }
+    #endif
 
     result += data;
     interp0->add_raw[0] = data;
@@ -66,10 +68,12 @@ static inline uint16_t __not_in_flash_func(decode_intr)(uint32_t sample)
     code_adr = interp0->pop[2];
     data = *code_adr;
 
-    // if (((int16_t)data) < 0)
-    // {
-    //     return -1;
-    // }
+    #ifdef ERR_FAST_FAIL
+    if (((int16_t)data) < 0)
+    {
+        return -1;
+    }
+    #endif
 
     result += data;
     interp0->add_raw[0] = data;
@@ -77,22 +81,23 @@ static inline uint16_t __not_in_flash_func(decode_intr)(uint32_t sample)
     code_adr = interp0->pop[2];
     data = *code_adr;
 
-    // if (((int16_t)data) < 0)
-    // {
-    //     return -1;
-    // }
+    #ifdef ERR_FAST_FAIL
+    if (((int16_t)data) < 0)
+    {
+        return -1;
+    }
+    #endif
 
     result += data;
     return result & 0x7ff;
 }
-
 
 static inline void __not_in_flash_func(store_color)(int32_t sample, uint32_t row, uint32_t color)
 {
     uint16_t dec = decode_intr(sample);
     if (dec > 0)
     {
-        fab2col[dec][row % 2] = color;
+        calibration_data[dec][row % 2] = color;
     }
 }
 
@@ -103,11 +108,10 @@ static inline int8_t __not_in_flash_func(match_color)(int32_t sample, uint32_t r
         return -1;
     if (dec > 0)
     {
-        return fab2col[dec][row % 2];
+        return calibration_data[dec][row % 2];
     }
     return 0;
 }
-
 
 static inline void __not_in_flash_func(chroma_init)(bool preset_loaded)
 {
@@ -115,8 +119,8 @@ static inline void __not_in_flash_func(chroma_init)(bool preset_loaded)
     {
         for (int i = 0; i < 2048; i++)
         {
-            fab2col[i][0] = 0xff;
-            fab2col[i][1] = 0xff;
+            calibration_data[i][0] = 0xff;
+            calibration_data[i][1] = 0xff;
         }
     }
     else
@@ -126,7 +130,7 @@ static inline void __not_in_flash_func(chroma_init)(bool preset_loaded)
     store_color(0x0, 0, 0);
     store_color(0x0, 1, 0);
     interp0->ctrl[0] = (1 << 18) + (12 << 10) + (8 << 5) + 3;
-    interp0->base[2] = trans_data; 
+    interp0->base[2] = trans_data;
 }
 
 static inline bool chroma_calibration_finished()
@@ -136,13 +140,13 @@ static inline bool chroma_calibration_finished()
 
 void static inline __not_in_flash_func(draw_rullers)(uint16_t row)
 {
-    if (row == FIRST_ROW_TO_SHOW+ NO_ROWS_TO_SHOW +2)
+    if (row == FIRST_ROW_TO_SHOW + ROWS_TO_SHOW + 2)
     {
 
         for (int x = 0; x < 200; x++)
             plot(x + 39, 150, x % 2 == 0 ? WHITE : RED);
     }
-    if (row == FIRST_ROW_TO_SHOW + NO_ROWS_TO_SHOW + 3)
+    if (row == FIRST_ROW_TO_SHOW + ROWS_TO_SHOW + 3)
     {
 
         for (int x = 0; x < 200; x++)
@@ -246,7 +250,6 @@ static inline void __not_in_flash_func(chroma_calibrate)(uint16_t row)
 
     if (c_step == TEST)
     {
-
         for (int q = 0; q < CHROMA_LINE_LENGTH; q++)
         {
             int8_t matched = match_color(chroma_buf[buf_seq][q], row);
@@ -258,12 +261,9 @@ static inline void __not_in_flash_func(chroma_calibrate)(uint16_t row)
         if (frame == 600)
         {
             c_step = END;
-            //  plot(393, 239, BLUE);
             plot(391, 239, YELLOW);
-            //save_preset(fab2col);
-            setPostBootAction(WRITE_PRESET);
-            watchdog_enable(1,1);
-  
+            set_post_boot_action(WRITE_PRESET);
+            watchdog_enable(1, 1);
         }
     }
 }

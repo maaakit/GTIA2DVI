@@ -5,9 +5,6 @@
 add_executable(gtia2dvi
 	main.c
 )
-# target_sources(gtia2dvi PRIVATE
-# 	${CMAKE_CURRENT_LIST_DIR}/flash_storage.c
-# )
 
 pico_generate_pio_header(gtia2dvi ${CMAKE_CURRENT_LIST_DIR}/gtia_luma_ng.pio)
 pico_generate_pio_header(gtia2dvi ${CMAKE_CURRENT_LIST_DIR}/gtia_chroma_ng.pio)

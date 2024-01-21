@@ -8,8 +8,7 @@
 #define FRAME_HEIGHT (576/2)
 
 #define FIRST_ROW_TO_SHOW 40
-#define NO_ROWS_TO_SHOW 248
-
+#define ROWS_TO_SHOW 248
 
 #define VREG_VSEL VREG_VOLTAGE_1_30
 
@@ -23,20 +22,17 @@
 struct AppConfig
 {
     bool enableChroma;
-    bool a1;
-    bool a2;
-    bool a3;
     uint32_t pad;
 };
 
-struct AppConfig appcfg __attribute__((section(".uninitialized_data")));
 
-uint8_t fab2col[2048][2] __attribute__((section(".uninitialized_data")));
+uint8_t calibration_data[2048][2] __attribute__((section(".uninitialized_data")));
 
+struct AppConfig app_cfg __attribute__((section(".uninitialized_data")));
 
 void cfg_init()
 {
-    appcfg.enableChroma = false;
+    app_cfg.enableChroma = false;
 }
 
 bool preset_loaded = false;

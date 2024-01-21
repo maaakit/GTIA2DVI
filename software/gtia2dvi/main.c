@@ -17,33 +17,31 @@ int __not_in_flash_func(main)()
 	gpio_set_dir(LED_PIN, GPIO_OUT);
 
 
-	executePostBootAction();
+	exec_post_boot_action();
 
 	btn_init();
 
 
 	if (flash_config_saved())
 	{
-		flash_load_config(&appcfg);
+		flash_load_config(&app_cfg);
 	} else {
 		cfg_init();
 	}
 
-
-
 	if (flash_preset_saved())
 	{
-		flash_load_preset((uint8_t *)fab2col);
+		flash_load_preset((uint8_t *)calibration_data);
 		preset_loaded = true;
 	} else {
-		appcfg.enableChroma = false;
+		app_cfg.enableChroma = false;
 	}
 
 	sleep_ms(100);
 	bool menu_requested = btn_is_down(BTN_A);
-	sleep_ms(1000);
+	sleep_ms(500);
 	vreg_set_voltage(VREG_VSEL);
-	sleep_ms(1000);
+	sleep_ms(500);
 
 	setup_display();
 

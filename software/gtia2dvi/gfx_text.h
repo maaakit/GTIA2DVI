@@ -120,9 +120,4 @@ static void text_block_println(char *str)
     text_block_print(str);
     text_block_print("\r\n");
 }
-static void __not_in_flash("text_block_scroll") text_block_scroll(char *str)
-{
-}
-static void __not_in_flash("text_block_set_cur_pos") text_block_set_cur_pos(char *str)
-{
-}
+

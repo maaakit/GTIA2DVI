@@ -13,12 +13,12 @@ enum PostBootAction
 
 enum PostBootAction post_boot_action __attribute__((section(".uninitialized_data")));
 
-void setPostBootAction(enum PostBootAction action)
+void set_post_boot_action(enum PostBootAction action)
 {
     post_boot_action |= action;
 }
 
-void executePostBootAction()
+void exec_post_boot_action()
 {
     if (watchdog_caused_reboot() == false)
     {
@@ -32,11 +32,11 @@ void executePostBootAction()
     }
     if (post_boot_action & WRITE_PRESET)
     {
-        flash_save_preset(&fab2col);
+        flash_save_preset((uint8_t *)&calibration_data);
     }
     if (post_boot_action & WRITE_CONFIG)
     {
-        flash_save_config(&appcfg);
+        flash_save_config(&app_cfg);
     }
 
     post_boot_action = 0;

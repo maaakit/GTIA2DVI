@@ -3,6 +3,7 @@
 #ifndef BUTTONS_H
 #define BUTTONS_H
 
+// buttons has to be continous GPIO numbers
 #define BTN_A 8
 #define BTN_B 9
 
@@ -11,9 +12,7 @@
 #define BTN_DEBOUNCE_TIME 10
 #define BTN_DEBOUNCE_TIME_LONG 180
 
-static int btn_down_frames[2] = {0, 0};
-
-enum btn_event
+enum BtnEvent
 {
     NONE = 0,
     BTN_A_SHORT = 10,
@@ -21,6 +20,9 @@ enum btn_event
     BTN_A_LONG = 20,
     BTN_B_LONG,
 };
+
+int btn_down_frames[2] = {0, 0};
+enum BtnEvent _btn_last_event = NONE;
 
 static inline void
 btn_init()
@@ -31,8 +33,6 @@ btn_init()
     gpio_pull_up(BTN_A);
     gpio_pull_up(BTN_B);
 }
-
-static enum btn_event lastEvent = NONE;
 
 inline void btn_debounce()
 {
@@ -45,15 +45,9 @@ inline void btn_debounce()
         else
         {
             int current_time = btn_down_frames[i];
-            // if (current_time > BTN_DEBOUNCE_TIME_LONG)
-            // {
-            //     lastEvent = BTN_A_LONG + i;
-            //     btn_down_frames[i] = 0;
-            //     continue;
-            // }
             if (current_time > BTN_DEBOUNCE_TIME)
             {
-                lastEvent = BTN_A_SHORT + i;
+                _btn_last_event = BTN_A_SHORT + i;
                 btn_down_frames[i] = 0;
                 continue;
             }
@@ -62,11 +56,11 @@ inline void btn_debounce()
     }
 }
 
-static inline enum btn_event btn_last_event()
+static inline enum BtnEvent btn_last_event()
 {
-    enum btn_event last = lastEvent;
+    enum BtnEvent last = _btn_last_event;
     // clear
-    lastEvent = NONE;
+    _btn_last_event = NONE;
     return last;
 }
 

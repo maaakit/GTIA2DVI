@@ -135,11 +135,11 @@ void __not_in_flash_func(process_video_stream)()
     uint16_t row;
     while (true)
     {
-        enum btn_event btn = btn_last_event();
+        enum BtnEvent btn = btn_last_event();
 
         if (btn == BTN_A_SHORT && preset_loaded)
         {
-            appcfg.enableChroma = !appcfg.enableChroma;
+            app_cfg.enableChroma = !app_cfg.enableChroma;
         }
 
         _wait_and_restart_dma();
@@ -155,12 +155,12 @@ void __not_in_flash_func(process_video_stream)()
             frame++;
 
         }
-        if (row < FIRST_ROW_TO_SHOW || row >= FIRST_ROW_TO_SHOW + NO_ROWS_TO_SHOW)
+        if (row < FIRST_ROW_TO_SHOW || row >= FIRST_ROW_TO_SHOW + ROWS_TO_SHOW)
         {
             // skip rows outside view port
             continue;
         }
-        if (appcfg.enableChroma)
+        if (app_cfg.enableChroma)
         {
             _draw_luma_and_chroma_row(row);
         }
@@ -227,7 +227,7 @@ void __not_in_flash_func(calibrate_chroma)()
         {
             frame++;
         }
-        if (row < FIRST_ROW_TO_SHOW || row >= FIRST_ROW_TO_SHOW + NO_ROWS_TO_SHOW)
+        if (row < FIRST_ROW_TO_SHOW || row >= FIRST_ROW_TO_SHOW + ROWS_TO_SHOW)
         {
             continue;
         }

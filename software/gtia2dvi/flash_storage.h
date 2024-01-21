@@ -21,7 +21,7 @@
 
 #define FLASH_SECTOR_OFFSET(o) (PICO_FLASH_SIZE_BYTES - FLASH_SECTOR_SIZE * (o) - FLASH_SECTOR_SIZE )
 
-bool sector_empty(uint32_t *adr)
+bool _is_sector_empty(uint32_t *adr)
 {
     uint32_t *p, value;
 
@@ -39,7 +39,7 @@ bool sector_empty(uint32_t *adr)
     return false;
 }
 
-void save_data(uint32_t flash_offs, const uint8_t *data, size_t count)
+void _save_data(uint32_t flash_offs, const uint8_t *data, size_t count)
 {
     flash_range_erase(flash_offs, count);
     flash_range_program(flash_offs, data, count);
@@ -53,7 +53,7 @@ void flash_factory_reset()
 
 bool flash_preset_saved()
 {
-    return sector_empty(XIP_BASE + FLASH_SECTOR_OFFSET(PRESET_SECTOR));
+    return _is_sector_empty(XIP_BASE + FLASH_SECTOR_OFFSET(PRESET_SECTOR));
 }
 
 void flash_load_preset(uint8_t *address)
@@ -63,12 +63,12 @@ void flash_load_preset(uint8_t *address)
 
 void flash_save_preset(uint8_t *address)
 {
-    save_data(FLASH_SECTOR_OFFSET(PRESET_SECTOR), address, PRESET_SIZE);
+    _save_data(FLASH_SECTOR_OFFSET(PRESET_SECTOR), address, PRESET_SIZE);
 }
 
 bool flash_config_saved()
 {
-    return sector_empty(XIP_BASE + FLASH_SECTOR_OFFSET(CONFIG_SECTOR));
+    return _is_sector_empty(XIP_BASE + FLASH_SECTOR_OFFSET(CONFIG_SECTOR));
 }
 
 void flash_load_config(struct AppConfig *address)
@@ -78,7 +78,7 @@ void flash_load_config(struct AppConfig *address)
 
 void flash_save_config(struct AppConfig *address)
 {
-    save_data(FLASH_SECTOR_OFFSET(CONFIG_SECTOR), (uint8_t*) address, FLASH_SECTOR_SIZE);
+    _save_data(FLASH_SECTOR_OFFSET(CONFIG_SECTOR), (uint8_t*) address, FLASH_SECTOR_SIZE);
 }
 
 #endif // FLASH_STORAGE_H

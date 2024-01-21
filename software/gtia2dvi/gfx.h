@@ -37,9 +37,9 @@ uint16_t framebuf[FRAME_WIDTH * FRAME_HEIGHT];
 
 static void inline fill_scren(int16_t color_rgb_565)
 {
-    uint32_t *buf = framebuf;
+    uint32_t *buf = (uint32_t *)framebuf;
     uint32_t count = FRAME_WIDTH * FRAME_HEIGHT / 2;
-    uint32_t val = color_rgb_565 << 16 + color_rgb_565;
+    uint32_t val = (color_rgb_565 << 16) + color_rgb_565;
     while (count--)
         *buf++ = val;
 }

@@ -2,6 +2,8 @@
 #include "dvi_serialiser.h"
 #include "dvi_timing.h"
 #include "common_dvi_pin_configs.h"
+#include "pico/multicore.h"
+#include "buttons.h"
 
 extern const struct dvi_timing dvi_timing_768x576p_50hz;
 

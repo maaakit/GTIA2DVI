@@ -1,25 +1,25 @@
 
 
-struct MenuItem promptMenuItems[] = {
+struct MenuItem prompt_menu_items[] = {
     {"No get me back", NULL},
     {"Yes, go forward", NULL}};
 
 typedef void (*CallbackFunction)();
 
-void showPrompt(CallbackFunction onYes, CallbackFunction onNo, uint x, uint y)
+void show_prompt(CallbackFunction on_yes, CallbackFunction on_no, uint x, uint y)
 {
-    promptMenuItems[0].functionPointer = onNo;
-    promptMenuItems[1].functionPointer = onYes;
+    prompt_menu_items[0].functionPointer = on_no;
+    prompt_menu_items[1].functionPointer = on_yes;
 
-    struct Menu promptMenu = {
-        .items = promptMenuItems,
-        .itemCount = sizeof(promptMenuItems) / sizeof(promptMenuItems[0]),
+    struct Menu prompt_menu = {
+        .items = prompt_menu_items,
+        .itemCount = sizeof(prompt_menu_items) / sizeof(prompt_menu_items[0]),
         .posX = x,
         .posY = y};
-    drawMenu(&promptMenu);
+    draw_menu(&prompt_menu);
     while (true)
     {
-        sleep_us(20 * 1000);
-        updateMenu(&promptMenu);
+        sleep_ms(20);
+        update_menu(&prompt_menu);
     }
 }

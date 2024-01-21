@@ -10,14 +10,13 @@
 #define MENU_BOX_W 367
 #define MENU_BOX_H 275
 
-void systemInfo();
-void lumaCalibration();
-void chromaCalibration();
-void toggleChromaDecode();
-void factoryReset();
-void saveConfig();
+void luma_calibration();
+void chroma_calibration();
+void toggle_chroma_decode_val();
+void factory_reset();
+void save_config();
 void force_restart();
-void lumaExit();
+void luma_exit();
 void none();
 
 struct TextBox header = {
@@ -31,12 +30,12 @@ struct TextBox header = {
     .height = 32};
 
 struct MenuItem mainMenuItems[] = {
-    {"Chroma calibration", chromaCalibration},
+    {"Chroma calibration", chroma_calibration},
     {"Chroma calibration done", none},
-    {"Chroma decode (experimental)", toggleChromaDecode},
-    {"Factory reset", factoryReset},
+    {"Chroma decode (experimental)", toggle_chroma_decode_val},
+    {"Factory reset", factory_reset},
     {"Restart", force_restart},
-    {"Save changes", saveConfig}};
+    {"Save changes", save_config}};
 
 struct Menu mainMenu = {
     .items = mainMenuItems,
@@ -45,10 +44,10 @@ struct Menu mainMenu = {
     .posY = 60};
 
 struct MenuItem lumaMenuItems[] = {
-    {"Luma first delay value", lumaExit},
-    {"Luma second delay value", lumaExit},
-    {"Restore", lumaExit},
-    {"Main menu", lumaExit}};
+    {"Luma first delay value", luma_exit},
+    {"Luma second delay value", luma_exit},
+    {"Restore", luma_exit},
+    {"Main menu", luma_exit}};
 
 struct Menu lumaMenu = {
     .items = lumaMenuItems,
@@ -57,23 +56,23 @@ struct Menu lumaMenu = {
 static inline void redraw_main_menu()
 {
     fill_scren(BLACK);
-    drawTextBox(&header);
+    draw_text_box(&header);
     set_pos(mainMenu.posX, mainMenu.posY - 12);
     put_text("Main menu");
-    drawMenu(&mainMenu);
+    draw_menu(&mainMenu);
 }
 
 static inline void update_chroma_decode_value()
 {
-    set_pos(300, menuItemPosY(&mainMenu, 2));
-    if (appcfg.enableChroma)
+    set_pos(300, menu_item_pos_y(&mainMenu, 2));
+    if (app_cfg.enableChroma)
         put_text("ON ");
     else
         put_text("OFF");
 }
 static inline void update_chroma_calibration_done_value()
 {
-    set_pos(300, menuItemPosY(&mainMenu, 1));
+    set_pos(300, menu_item_pos_y(&mainMenu, 1));
     if (preset_loaded)
         put_text("YES");
     else
@@ -87,50 +86,48 @@ static inline void main_menu_show()
     update_chroma_calibration_done_value();
     while (true)
     {
-        sleep_us(20 * 1000);
-        updateMenu(&mainMenu);
+        sleep_ms(20);
+        update_menu(&mainMenu);
     }
 }
 
-bool lumaContinue = true;
+bool luma_continue = true;
 
-void lumaExit()
+void luma_exit()
 {
-    lumaContinue = false;
+    luma_continue = false;
 }
 
-bool lumaCalibrationHandler()
+bool luma_calibration_handler()
 {
-    updateMenu(&lumaMenu);
-    if (lumaContinue == false)
+    update_menu(&lumaMenu);
+    if (luma_continue == false)
     {
-        lumaContinue = true;
+        luma_continue = true;
         return false;
     }
     return true;
 }
 
-void lumaCalibration()
+void luma_calibration()
 {
-    drawMenu(&lumaMenu);
-    calibrate_luma(lumaCalibrationHandler);
+    draw_menu(&lumaMenu);
+    calibrate_luma(luma_calibration_handler);
     redraw_main_menu();
 }
 
-void doChromaCalibration()
+void do_chroma_calibration()
 {
     fill_scren(BLACK);
     calibrate_chroma();
 }
 
-void chromaCalibration()
+void chroma_calibration()
 {
     fill_scren(BLACK);
-    drawTextBox(&header);
+    draw_text_box(&header);
     set_pos(mainMenu.posX, mainMenu.posY - 12);
     put_text("Chroma Calibration");
-
- //   box(MENU_BOX_X, MENU_BOX_Y + 32, MENU_BOX_W, MENU_BOX_H - 32, GREEN);
 
     text_block_init(MENU_BOX_X + 8, mainMenu.posY, 46, 20);
     text_block_println("To perform proper calibration, follow these");
@@ -141,27 +138,27 @@ void chromaCalibration()
     text_block_println("4) go back to this menu and confirm");
     text_block_println("   the calibration");
 
-    showPrompt(doChromaCalibration, main_menu_show, MENU_BOX_X + 8, MENU_BOX_Y + 36 + 80);
+    show_prompt(do_chroma_calibration, main_menu_show, MENU_BOX_X + 8, MENU_BOX_Y + 36 + 80);
 }
 
-void toggleChromaDecode()
+void toggle_chroma_decode_val()
 {
     if (preset_loaded)
     {
-        appcfg.enableChroma = !appcfg.enableChroma;
+        app_cfg.enableChroma = !app_cfg.enableChroma;
         update_chroma_decode_value();
     }
 }
 
-void saveConfig()
+void save_config()
 {
-    setPostBootAction(WRITE_CONFIG);
+    set_post_boot_action(WRITE_CONFIG);
     force_restart();
 }
 
 void prompt(CallbackFunction onYes, CallbackFunction onNo)
 {
-    struct TextBox propmpt = {
+    struct TextBox prompt = {
         .text = "Are you sure ?",
         .textColor = YELLOW,
         .frameColor = RED,
@@ -170,18 +167,18 @@ void prompt(CallbackFunction onYes, CallbackFunction onNo)
         .posY = MENU_BOX_H / 2,
         .width = MENU_BOX_W - 140,
         .height = 64};
-    drawTextBox(&propmpt);
-    showPrompt(onYes, onNo, propmpt.posX + 8, propmpt.posY + 20);
+    draw_text_box(&prompt);
+    show_prompt(onYes, onNo, prompt.posX + 8, prompt.posY + 20);
 }
-void doFactoryReset()
+void do_factory_reset()
 {
-    setPostBootAction(FACTORY_RESET);
+    set_post_boot_action(FACTORY_RESET);
     force_restart();
 }
 
-void factoryReset()
+void factory_reset()
 {
-    prompt(doFactoryReset, main_menu_show);
+    prompt(do_factory_reset, main_menu_show);
 }
 
 void force_restart()

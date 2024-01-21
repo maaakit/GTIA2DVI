@@ -10,7 +10,7 @@ extern const struct dvi_timing dvi_timing_768x576p_50hz;
 #define __dvi_const(x) __not_in_flash_func(x)
 const struct dvi_timing __dvi_const(dvi_timing_768x576p_50hz) = {
 	.h_sync_polarity   = false,
-	.h_front_porch     = 24,
+	.h_front_porch     = 36,
 	.h_sync_width      = 72,
 	.h_back_porch      = 96,
 	.h_active_pixels   = 768,
@@ -36,7 +36,7 @@ static void __not_in_flash_func(core1_main)()
 	dvi_scanbuf_main_16bpp(&dvi0);
 	__builtin_unreachable();
 }
-
+	static uint scanline = 2;
 static void __not_in_flash_func(core1_scanline_callback)()
 {
 	// Discard any scanline pointers passed back
@@ -44,7 +44,7 @@ static void __not_in_flash_func(core1_scanline_callback)()
 	while (queue_try_remove_u32(&dvi0.q_colour_free, &bufptr))
 		;
 	// // Note first two scanlines are pushed before DVI start
-	static uint scanline = 2;
+
 	bufptr = &framebuf[FRAME_WIDTH * (scanline)];
 	queue_add_blocking_u32(&dvi0.q_colour_valid, &bufptr);
 	scanline = (scanline + 1) % FRAME_HEIGHT;

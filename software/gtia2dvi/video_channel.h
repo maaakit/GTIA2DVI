@@ -62,10 +62,16 @@ static inline void _wait_and_restart_dma()
     dma_channel_set_write_addr(LUMA_DMA_CHANNEL, &luma_buf, true);
 }
 
-
 static inline void _draw_luma_and_chroma_row(uint16_t row)
 {
     uint32_t y = row - FIRST_ROW_TO_SHOW + SCREEN_OFFSET_Y;
+
+    if (y == scanline || y + 1 == scanline)
+    {
+        // don't modify line which is currently transferred to TDMS pipeline
+        return;
+    }
+
     uint32_t matched = 0;
     uint16_t *ptr = framebuf + y * FRAME_WIDTH + SCREEN_OFFSET_X;
 
@@ -153,7 +159,6 @@ void __not_in_flash_func(process_video_stream)()
         {
             // increase frame counter once per frame
             frame++;
-
         }
         if (row < FIRST_ROW_TO_SHOW || row >= FIRST_ROW_TO_SHOW + ROWS_TO_SHOW)
         {

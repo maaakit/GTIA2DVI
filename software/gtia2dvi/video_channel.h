@@ -24,7 +24,7 @@ static inline void _wait_and_restart_dma();
 
 uint16_t luma_buf[LUMA_LINE_LENGTH_BYTES / 2];
 
-static inline void __not_in_flash_func(_setup_gtia_interface)()
+static inline void _setup_gtia_interface()
 {
     gpio_init_mask(INPUT_PINS_MASK);
     gpio_set_dir_in_masked(INPUT_PINS_MASK);
@@ -133,7 +133,7 @@ static inline void _draw_luma_only_row(uint16_t row)
 
 void __not_in_flash_func(process_video_stream)()
 {
-    chroma_init(true);
+    chroma_hwd_init(true);
 
     _setup_gtia_interface();
 
@@ -218,7 +218,11 @@ static __attribute__((noinline)) void __not_in_flash_func(calibrate_luma)(bool (
 
 void __not_in_flash_func(calibrate_chroma)()
 {
-    chroma_init(false);
+
+
+    chroma_hwd_init();
+
+    chroma_calibration_init();
 
     _setup_gtia_interface();
 

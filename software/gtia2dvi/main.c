@@ -11,7 +11,7 @@
 #include "ui/app_menu.h"
 #include "post_boot.h"
 
-int __not_in_flash_func(main)()
+int main()
 {
 	gpio_init(LED_PIN);
 	gpio_set_dir(LED_PIN, GPIO_OUT);

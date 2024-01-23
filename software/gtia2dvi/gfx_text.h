@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include "gfx.h"
 
-static void __not_in_flash("put_char") put_char(char ascii)
+static inline void put_char(char ascii)
 {
     if (ascii < FONT_FIRST_CHAR || ascii > (FONT_FIRST_CHAR + FONT_CHARS_NUMBER))
     {
@@ -29,7 +29,7 @@ static void __not_in_flash("put_char") put_char(char ascii)
     gfx_state.posx = gfx_state.posx + FONT_WIDTH;
 }
 
-static void __not_in_flash("put_text") put_text(char *str)
+static inline void put_text(char *str)
 {
 
     while (*str != '\0')
@@ -54,7 +54,7 @@ struct text_block
 
 struct text_block tb = {};
 
-static void __not_in_flash("text_block_init") text_block_init(uint16_t posx, uint8_t posy, uint8_t c_width, uint8_t c_height)
+static inline void text_block_init(uint16_t posx, uint8_t posy, uint8_t c_width, uint8_t c_height)
 {
     tb.posx = posx;
     tb.posy = posy;
@@ -64,12 +64,12 @@ static void __not_in_flash("text_block_init") text_block_init(uint16_t posx, uin
     tb.c_pos_y = 0;
 }
 
-static void __not_in_flash("scroll_up") scroll_vert(int16_t rows)
+static void scroll_vert(int16_t rows)
 {
     //  for( uint_8 y = )
 }
 
-static void __not_in_flash("check_space") check_space()
+static inline void check_space()
 {
     if (tb.c_pos_x >= tb.c_width)
     {
@@ -85,7 +85,7 @@ static void __not_in_flash("check_space") check_space()
 }
 
 
-static void text_block_print_chr(char c)
+static inline void text_block_print_chr(char c)
 {
     if (c == '\r')
     {
@@ -104,7 +104,7 @@ static void text_block_print_chr(char c)
     check_space();
 }
 
-static void __not_in_flash("text_block_print") text_block_print(char *str)
+static inline void text_block_print(char *str)
 {
     check_space();
 
@@ -115,7 +115,7 @@ static void __not_in_flash("text_block_print") text_block_print(char *str)
     }
 }
 
-static void text_block_println(char *str)
+static inline void text_block_println(char *str)
 {
     text_block_print(str);
     text_block_print("\r\n");

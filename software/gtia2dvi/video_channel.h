@@ -13,8 +13,7 @@
 #define CHROMA_DMA_CHANNEL 11
 #define LUMA_LINE_LENGTH_BYTES 202
 
-#define SCREEN_OFFSET_Y 20
-#define SCREEN_OFFSET_X 16
+
 #define LUMA_START_OFFSET 12
 
 static inline void calibrate_luma();
@@ -25,7 +24,7 @@ static inline void _wait_and_restart_dma();
 
 uint16_t luma_buf[LUMA_LINE_LENGTH_BYTES / 2];
 
-static inline void _setup_gtia_interface()
+static inline void __not_in_flash_func(_setup_gtia_interface)()
 {
     gpio_init_mask(INPUT_PINS_MASK);
     gpio_set_dir_in_masked(INPUT_PINS_MASK);
@@ -64,7 +63,7 @@ static inline void _wait_and_restart_dma()
 
 static inline void _draw_luma_and_chroma_row(uint16_t row)
 {
-    uint32_t y = row - FIRST_ROW_TO_SHOW + SCREEN_OFFSET_Y;
+    uint32_t y = row - FIRST_GTIA_ROW_TO_SHOW + SCREEN_OFFSET_Y;
 
     if (y == scanline || y + 1 == scanline)
     {
@@ -78,7 +77,7 @@ static inline void _draw_luma_and_chroma_row(uint16_t row)
     uint32_t *chroma_sample_ptr = chroma_buf[buf_seq];
 
     chroma_sample_ptr += 27;
-    for (uint32_t i = LUMA_START_OFFSET; i <= (LUMA_LINE_LENGTH_BYTES / 2); i++)
+    for (uint32_t i = LUMA_START_OFFSET; i < (LUMA_LINE_LENGTH_BYTES / 2); i++)
     {
         uint16_t c = luma_buf[i];
         uint16_t luma = c & 0xf;
@@ -117,8 +116,8 @@ static inline void _draw_luma_and_chroma_row(uint16_t row)
 static inline void _draw_luma_only_row(uint16_t row)
 {
     uint16_t x = SCREEN_OFFSET_X;
-    uint16_t y = row - FIRST_ROW_TO_SHOW + SCREEN_OFFSET_Y;
-    for (uint8_t i = LUMA_START_OFFSET; i <= (LUMA_LINE_LENGTH_BYTES / 2); i++)
+    uint16_t y = row - FIRST_GTIA_ROW_TO_SHOW + SCREEN_OFFSET_Y;
+    for (uint16_t i = LUMA_START_OFFSET; i < (LUMA_LINE_LENGTH_BYTES / 2); i++)
     {
         uint16_t c = luma_buf[i];
         uint8_t pxl = c & 0xf;
@@ -147,6 +146,10 @@ void __not_in_flash_func(process_video_stream)()
         {
             app_cfg.enableChroma = !app_cfg.enableChroma;
         }
+       if (btn == BTN_B_SHORT  )
+        {
+            sleep_ms(5);
+        }
 
         _wait_and_restart_dma();
 
@@ -160,7 +163,7 @@ void __not_in_flash_func(process_video_stream)()
             // increase frame counter once per frame
             frame++;
         }
-        if (row < FIRST_ROW_TO_SHOW || row >= FIRST_ROW_TO_SHOW + ROWS_TO_SHOW)
+        if (row < FIRST_GTIA_ROW_TO_SHOW || row >= FIRST_GTIA_ROW_TO_SHOW + GTIA_ROWS_TO_SHOW)
         {
             // skip rows outside view port
             continue;
@@ -198,7 +201,7 @@ static __attribute__((noinline)) void __not_in_flash_func(calibrate_luma)(bool (
 
         uint16_t x = 0;
         uint16_t y = row - 60 + 140;
-        for (uint8_t i = 8; i <= (LUMA_LINE_LENGTH_BYTES / 2); i++)
+        for (uint8_t i = 8; i < (LUMA_LINE_LENGTH_BYTES / 2); i++)
         {
             uint16_t c = luma_buf[i];
             uint8_t pxl = c & 0xf;
@@ -232,7 +235,7 @@ void __not_in_flash_func(calibrate_chroma)()
         {
             frame++;
         }
-        if (row < FIRST_ROW_TO_SHOW || row >= FIRST_ROW_TO_SHOW + ROWS_TO_SHOW)
+        if (row < FIRST_GTIA_ROW_TO_SHOW || row >= FIRST_GTIA_ROW_TO_SHOW + GTIA_ROWS_TO_SHOW)
         {
             continue;
         }

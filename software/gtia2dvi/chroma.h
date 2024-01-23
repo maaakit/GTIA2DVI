@@ -42,25 +42,25 @@ static inline uint16_t __not_in_flash_func(decode_intr)(uint32_t sample)
     uint16_t *code_adr = interp0->pop[2]; // 1
     uint16_t data = *code_adr;            // 1
 
-    #ifdef ERR_FAST_FAIL
+#ifdef ERR_FAST_FAIL
     if (((int16_t)data) < 0)
     {
         return -1;
     }
-    #endif
-    
+#endif
+
     uint16_t result = data; // 2
     interp0->add_raw[0] = data;
     interp0->ctrl[1] = (1 << 18) + (7 << 10) + (1 << 5) + 7;
     code_adr = interp0->pop[2]; // 1
     data = *code_adr;
 
-    #ifdef ERR_FAST_FAIL
+#ifdef ERR_FAST_FAIL
     if (((int16_t)data) < 0)
     {
         return -1;
     }
-    #endif
+#endif
 
     result += data;
     interp0->add_raw[0] = data;
@@ -68,12 +68,12 @@ static inline uint16_t __not_in_flash_func(decode_intr)(uint32_t sample)
     code_adr = interp0->pop[2];
     data = *code_adr;
 
-    #ifdef ERR_FAST_FAIL
+#ifdef ERR_FAST_FAIL
     if (((int16_t)data) < 0)
     {
         return -1;
     }
-    #endif
+#endif
 
     result += data;
     interp0->add_raw[0] = data;
@@ -81,12 +81,12 @@ static inline uint16_t __not_in_flash_func(decode_intr)(uint32_t sample)
     code_adr = interp0->pop[2];
     data = *code_adr;
 
-    #ifdef ERR_FAST_FAIL
+#ifdef ERR_FAST_FAIL
     if (((int16_t)data) < 0)
     {
         return -1;
     }
-    #endif
+#endif
 
     result += data;
     return result & 0x7ff;
@@ -138,19 +138,52 @@ static inline bool chroma_calibration_finished()
     return c_step == END;
 }
 
-void static inline __not_in_flash_func(draw_rullers)(uint16_t row)
+void static inline _draw_rullers(uint16_t row)
 {
-    if (row == FIRST_ROW_TO_SHOW + ROWS_TO_SHOW + 2)
+    if (row == FIRST_GTIA_ROW_TO_SHOW + GTIA_ROWS_TO_SHOW + 2)
     {
 
         for (int x = 0; x < 200; x++)
             plot(x + 39, 150, x % 2 == 0 ? WHITE : RED);
     }
-    if (row == FIRST_ROW_TO_SHOW + ROWS_TO_SHOW + 3)
+    if (row == FIRST_GTIA_ROW_TO_SHOW + GTIA_ROWS_TO_SHOW + 3)
     {
 
         for (int x = 0; x < 200; x++)
             plot(x + 39, 190, x % 2 == 0 ? WHITE : RED);
+    }
+}
+
+static inline void _count_color(int32_t sample, uint32_t row, uint32_t color)
+{
+    uint32_t *cnt = framebuf;
+    uint16_t dec = decode_intr(sample);
+    if (dec < 0)
+        return;
+    cnt[((row % 2) << 12) + (dec << 4) + color]++;
+}
+
+static inline void _process_stats()
+{
+    uint32_t *cnt = framebuf;
+
+    for (int row = 0; row < 2; row++)
+    {
+        for (int smpl = 0; smpl < 2048; smpl++)
+        {
+            int max=0;
+            int max_col=0;
+            for (int col = 0; col < 16; col++)
+            {
+                int t = cnt[((row % 2) << 12) + (smpl << 4) + col];
+                if( t>max){
+                    max=t;
+                    max_col = col;
+                }
+            }
+         calibration_data[smpl][row % 2] = max_col;
+
+        }
     }
 }
 
@@ -163,8 +196,6 @@ static inline void __not_in_flash_func(chroma_calibrate)(uint16_t row)
 
     if (c_step == STEP1) // scan most right single color blocks
     {
-        for (int q = 0; q < CHROMA_LINE_LENGTH; q++)
-            framebuf[(row - FIRST_ROW_TO_SHOW) * FRAME_WIDTH + q] = chroma_buf[buf_seq][q];
         if (row > 68)
         {
             int col = (row - 69) / 12;
@@ -178,14 +209,12 @@ static inline void __not_in_flash_func(chroma_calibrate)(uint16_t row)
                         if (smpl != 0)
                         {
                             // sample and store block area
-                            store_color(smpl, row, col);
-                            plot(i, 239, WHITE);
+                            _count_color(smpl, row, col);
                         }
                     }
 
                     // sample right block edge (outher -> color 0)
-                    store_color(chroma_buf[buf_seq][239], row, 0);
-                    plot(252, row - FIRST_ROW_TO_SHOW, gtia_palette[col * 16 + 4]);
+                    _count_color(chroma_buf[buf_seq][239], row, 0);
                 }
             }
         }
@@ -193,7 +222,6 @@ static inline void __not_in_flash_func(chroma_calibrate)(uint16_t row)
         if (frame == 200)
         {
             c_step = STEP2;
-            plot(395, 239, RED);
         }
     }
 
@@ -203,48 +231,44 @@ static inline void __not_in_flash_func(chroma_calibrate)(uint16_t row)
         {
             for (uint i = 1; i < 16; i++)
             {
-                plot(39 + (i - 1) * 5, row - FIRST_ROW_TO_SHOW, GREEN);
-                plot(39 + 83 + (i - 1) * 5, row - FIRST_ROW_TO_SHOW, RED);
-
                 uint32_t smpl = chroma_buf[buf_seq][39 + (i - 1) * 5];
                 if (smpl != 0)
-                    store_color(smpl, row, i);
+                _count_color(smpl, row, i);
 
                 smpl = chroma_buf[buf_seq][39 + 1 + (i - 1) * 5];
                 if (smpl != 0)
-                    store_color(smpl, row, i);
+                _count_color(smpl, row, i);
 
                 smpl = chroma_buf[buf_seq][39 + 83 + (i - 1) * 5];
                 if (smpl != 0)
-                    store_color(smpl, row, i);
+                _count_color(smpl, row, i);
 
                 smpl = chroma_buf[buf_seq][39 + 83 + 1 + (i - 1) * 5];
                 if (smpl != 0)
-                    store_color(smpl, row, i);
+                _count_color(smpl, row, i);
 
                 uint c = ((row - 169) / 6) + 1;
 
-                plot(39 + 3 + (i - 1) * 5, row - FIRST_ROW_TO_SHOW, gtia_palette[c * 16 + 8]);
-
                 smpl = chroma_buf[buf_seq][39 + 3 + (i - 1) * 5];
                 if (smpl != 0)
-                    store_color(smpl, row, c);
+                _count_color(smpl, row, c);
                 smpl = chroma_buf[buf_seq][39 + 4 + (i - 1) * 5];
                 if (smpl != 0)
-                    store_color(smpl, row, c);
+         
+                _count_color(smpl, row, c);
                 smpl = chroma_buf[buf_seq][39 + 83 + 3 + (i - 1) * 5];
                 if (smpl != 0)
-                    store_color(smpl, row, c);
+                _count_color(smpl, row, c);
                 smpl = chroma_buf[buf_seq][39 + 83 + 4 + (i - 1) * 5];
                 if (smpl != 0)
-                    store_color(smpl, row, c);
+                _count_color(smpl, row, c);
             }
         }
 
-        if (frame == 400)
+        if (frame == 400 && row==300)
         {
+            _process_stats();
             c_step = TEST;
-            plot(393, 239, BLUE);
         }
     }
 
@@ -254,61 +278,17 @@ static inline void __not_in_flash_func(chroma_calibrate)(uint16_t row)
         {
             int8_t matched = match_color(chroma_buf[buf_seq][q], row);
             uint16_t col565 = matched != -1 ? gtia_palette[matched * 16 + 4] : YELLOW;
-            framebuf[(row - FIRST_ROW_TO_SHOW) * FRAME_WIDTH + q] = col565;
+            framebuf[(row - FIRST_GTIA_ROW_TO_SHOW) * FRAME_WIDTH + q] = col565;
         }
 
-        draw_rullers(row);
+        _draw_rullers(row);
         if (frame == 600)
         {
             c_step = END;
-            plot(391, 239, YELLOW);
             set_post_boot_action(WRITE_PRESET);
             watchdog_enable(1, 1);
         }
     }
-}
-
-static inline uint16_t __not_in_flash_func(decode_intr2)(uint32_t sample)
-{
-    uint16_t aggr = 0;
-    uint32_t page_offset = 0;
-
-    if (sample == 0)
-    {
-        return 0;
-    }
-
-    uint16_t val = trans_data[sample & 0x7f];
-    if (((int16_t)val) >= 0)
-    {
-        aggr += (val & 0x7ff);
-        sample >>= 7;
-        page_offset += ((val >> 4) & 0x780);
-
-        val = trans_data[page_offset + (sample & 0x7f)];
-        if (((int16_t)val) >= 0)
-        {
-            aggr += (val & 0x7ff);
-            sample >>= 7;
-            page_offset += ((val >> 4) & 0x780);
-
-            val = trans_data[page_offset + (sample & 0x7f)];
-            if (((int16_t)val) >= 0)
-            {
-                aggr += (val & 0x7ff);
-                sample >>= 7;
-                page_offset += ((val >> 4) & 0x780);
-
-                val = trans_data[page_offset + (sample & 0x7f)];
-                if (((int16_t)val) >= 0)
-                {
-                    aggr += (val & 0x7ff);
-                    return aggr & 0x7ff;
-                }
-            }
-        }
-    }
-    return -1;
 }
 
 #endif

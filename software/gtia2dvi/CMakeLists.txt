@@ -6,8 +6,9 @@ add_executable(gtia2dvi
 	main.c
 )
 
-pico_generate_pio_header(gtia2dvi ${CMAKE_CURRENT_LIST_DIR}/gtia_luma_ng.pio)
-pico_generate_pio_header(gtia2dvi ${CMAKE_CURRENT_LIST_DIR}/gtia_chroma_ng.pio)
+pico_generate_pio_header(gtia2dvi ${CMAKE_CURRENT_LIST_DIR}/pio/gtia_luma_ng.pio)
+pico_generate_pio_header(gtia2dvi ${CMAKE_CURRENT_LIST_DIR}/pio/gtia_chroma_ng.pio)
+pico_generate_pio_header(gtia2dvi ${CMAKE_CURRENT_LIST_DIR}/pio/uart_8n1_tx.pio)
 
 target_compile_definitions(gtia2dvi PRIVATE
 	DVI_DEFAULT_SERIAL_CONFIG=${DVI_DEFAULT_SERIAL_CONFIG}

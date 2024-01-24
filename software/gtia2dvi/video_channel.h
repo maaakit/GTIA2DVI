@@ -1,7 +1,8 @@
 #include "gtia_luma_ng.pio.h"
 #include "gtia_chroma_ng.pio.h"
 #include "gtia_palette.h"
-#include "buttons.h"
+#include "util/buttons.h"
+#include "util/uart_log.h"
 
 #ifndef VIDEO_CHANNEL_H
 #define VIDEO_CHANNEL_H
@@ -12,7 +13,6 @@
 #define LUMA_DMA_CHANNEL 10
 #define CHROMA_DMA_CHANNEL 11
 #define LUMA_LINE_LENGTH_BYTES 202
-
 
 #define LUMA_START_OFFSET 12
 
@@ -145,12 +145,14 @@ void __not_in_flash_func(process_video_stream)()
         if (btn == BTN_A_SHORT && preset_loaded)
         {
             app_cfg.enableChroma = !app_cfg.enableChroma;
+            uart_log_put("BTN_A");
         }
-       if (btn == BTN_B_SHORT  )
+        if (btn == BTN_B_SHORT)
         {
             sleep_ms(5);
+            uart_log_put("BTN_B");
         }
-
+        uart_log_flush();
         _wait_and_restart_dma();
 
         // swap buffer
@@ -218,7 +220,6 @@ static __attribute__((noinline)) void __not_in_flash_func(calibrate_luma)(bool (
 
 void __not_in_flash_func(calibrate_chroma)()
 {
-
 
     chroma_hwd_init();
 

@@ -1,9 +1,9 @@
-#include "../buttons.h"
-#include "../video_channel.h"
-#include "../post_boot.h"
 #include "menu.h"
 #include "prompt.h"
 #include "pico/stdlib.h"
+#include "../util/buttons.h"
+#include "../util/post_boot.h"
+#include "../video_channel.h"
 
 #define MENU_BOX_X 8
 #define MENU_BOX_Y 6

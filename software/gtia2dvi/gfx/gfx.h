@@ -1,4 +1,4 @@
-#include "cfg.h"
+#include "../cfg.h"
 #include <stdint.h>
 #include "pico/platform.h"
 

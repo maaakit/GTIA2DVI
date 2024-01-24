@@ -14,7 +14,6 @@ static inline void put_char(char ascii)
         uint8_t data = font_data[(ascii - FONT_FIRST_CHAR) * FONT_WIDTH + xx];
         for (uint8_t yy = 0; yy < FONT_HEIGHT; yy++)
         {
-
             if (data & 0x01)
             {
                 plot(gfx_state.posx + xx, gfx_state.posy + yy, gfx_state.fore_col);
@@ -84,7 +83,6 @@ static inline void check_space()
     }
 }
 
-
 static inline void text_block_print_chr(char c)
 {
     if (c == '\r')
@@ -120,4 +118,3 @@ static inline void text_block_println(char *str)
     text_block_print(str);
     text_block_print("\r\n");
 }
-

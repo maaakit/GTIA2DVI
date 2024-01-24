@@ -1,12 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include "gfx.h"
 #include "hardware/interp.h"
-#include "flash_storage.h"
 #include "gtia_palette.h"
 #include "chroma_trans_table.h"
-#include "post_boot.h"
+#include "util/flash_storage.h"
+#include "util/post_boot.h"
 
 #ifndef CHROMA_H
 #define CHROMA_H
@@ -22,8 +21,8 @@ uint32_t chroma_buf[2][CHROMA_LINE_LENGTH + 2];
 enum calib_step
 {
     STEP1 = 1,
-    STEP2 ,
-    SAVE 
+    STEP2,
+    SAVE
 };
 
 enum calib_step c_step = STEP1;

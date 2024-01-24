@@ -1,31 +1,37 @@
 #include "pico/stdlib.h"
 #include "hardware/vreg.h"
 #include "cfg.h"
-#include "font8x8.h"
-#include "gfx.h"
+#include "gfx/font8x8.h"
+#include "gfx/gfx.h"
 #include "chroma.h"
-#include "flash_storage.h"
+#include "util/flash_storage.h"
 #include "dvi_display.h"
 #include "video_channel.h"
-#include "buttons.h"
+#include "util/buttons.h"
 #include "ui/app_menu.h"
-#include "post_boot.h"
+#include "util/post_boot.h"
+#include "util/uart_log.h"
 
 int main()
 {
 	gpio_init(LED_PIN);
 	gpio_set_dir(LED_PIN, GPIO_OUT);
 
+	uart_log_init();
 
 	exec_post_boot_action();
 
 	btn_init();
 
+	uart_log_put("TEST");
+	uart_log_flush();
 
 	if (flash_config_saved())
 	{
 		flash_load_config(&app_cfg);
-	} else {
+	}
+	else
+	{
 		cfg_init();
 	}
 
@@ -33,7 +39,9 @@ int main()
 	{
 		flash_load_preset((uint8_t *)calibration_data);
 		preset_loaded = true;
-	} else {
+	}
+	else
+	{
 		app_cfg.enableChroma = false;
 	}
 

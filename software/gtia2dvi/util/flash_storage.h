@@ -1,12 +1,12 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "cfg.h"
+#include <string.h>
 #include <hardware/flash.h>
 #include <hardware/watchdog.h>
 #include <hardware/sync.h>
-#include <string.h>
 #include "pico/stdlib.h"
+#include "../cfg.h"
 
 #ifndef FLASH_STORAGE_H
 #define FLASH_STORAGE_H
@@ -19,7 +19,7 @@
 #define CONFIG_SECTOR 1
 #define PRESET_SIZE 4096
 
-#define FLASH_SECTOR_OFFSET(o) (PICO_FLASH_SIZE_BYTES - FLASH_SECTOR_SIZE * (o) - FLASH_SECTOR_SIZE )
+#define FLASH_SECTOR_OFFSET(o) (PICO_FLASH_SIZE_BYTES - FLASH_SECTOR_SIZE * (o)-FLASH_SECTOR_SIZE)
 
 bool _is_sector_empty(uint32_t *adr)
 {
@@ -78,7 +78,7 @@ void flash_load_config(struct AppConfig *address)
 
 void flash_save_config(struct AppConfig *address)
 {
-    _save_data(FLASH_SECTOR_OFFSET(CONFIG_SECTOR), (uint8_t*) address, FLASH_SECTOR_SIZE);
+    _save_data(FLASH_SECTOR_OFFSET(CONFIG_SECTOR), (uint8_t *)address, FLASH_SECTOR_SIZE);
 }
 
 #endif // FLASH_STORAGE_H

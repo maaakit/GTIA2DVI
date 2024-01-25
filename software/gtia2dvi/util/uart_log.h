@@ -6,8 +6,8 @@
 #define UART_LOG_BUF_SIZE 1024
 #define UART_LOG_PIO pio0
 #define UART_LOG_SM 3
-#define UART_LOG_SERIAL_BAUD 300
-#define UART_LOG_TX_PIN LED_PIN
+#define UART_LOG_SERIAL_BAUD 1000000
+#define UART_LOG_TX_PIN 21
 
 static char uart_8n1_buffer[UART_LOG_BUF_SIZE];
 
@@ -18,6 +18,11 @@ static uint16_t uart_8n1_index_cur = 0;
 static inline void uart_log_init()
 {
     uart_8n1_tx_program_init(UART_LOG_PIO, UART_LOG_SM, pio_add_program(UART_LOG_PIO, &uart_8n1_tx_program), UART_LOG_TX_PIN, UART_LOG_SERIAL_BAUD);
+}
+
+static inline void uart_update_clkdiv()
+{
+    uart_8n1_tx_update_clkdiv(UART_LOG_PIO, UART_LOG_SM, UART_LOG_SERIAL_BAUD);
 }
 
 // TODO: non blocking DMA here !
@@ -38,6 +43,14 @@ static inline void uart_log_flush()
     }
 }
 
+static inline void uart_log_flush_blocking()
+{
+    while (uart_8n1_index_end != uart_8n1_index_cur)
+    {
+        uart_log_flush();
+    }
+}
+
 static inline void uart_log_put(char *s)
 {
     while (*s)
@@ -49,7 +62,11 @@ static inline void uart_log_put(char *s)
         }
     }
 }
-
+static inline void uart_log_putln(char *s)
+{
+    uart_log_put(s);
+    uart_log_put("\n");
+}
 static inline void uart_log_transfer(uint8_t *data, uint size)
 {
     // to be implemented with DMA

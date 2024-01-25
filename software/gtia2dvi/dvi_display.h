@@ -4,6 +4,7 @@
 #include "common_dvi_pin_configs.h"
 #include "pico/multicore.h"
 #include "util/buttons.h"
+#include "util/uart_log.h"
 
 extern const struct dvi_timing dvi_timing_768x576p_50hz;
 
@@ -57,6 +58,8 @@ static void __not_in_flash_func(setup_display)()
 #else
 	// Run system at TMDS bit clock
 	set_sys_clock_khz(DVI_TIMING.bit_clk_khz, false);
+	// update uart clock after sys_clock_change
+	uart_update_clkdiv();
 #endif
 	dvi0.timing = &DVI_TIMING;
 	dvi0.ser_cfg = DVI_DEFAULT_SERIAL_CONFIG;

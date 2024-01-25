@@ -145,12 +145,12 @@ void __not_in_flash_func(process_video_stream)()
         if (btn == BTN_A_SHORT && preset_loaded)
         {
             app_cfg.enableChroma = !app_cfg.enableChroma;
-            uart_log_put("BTN_A");
+            uart_log_putln("BTN_A");
+                   
         }
         if (btn == BTN_B_SHORT)
         {
-            sleep_ms(5);
-            uart_log_put("BTN_B");
+            uart_log_putln("BTN_B");
         }
         uart_log_flush();
         _wait_and_restart_dma();

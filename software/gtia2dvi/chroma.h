@@ -6,6 +6,7 @@
 #include "chroma_trans_table.h"
 #include "util/flash_storage.h"
 #include "util/post_boot.h"
+#include "uart_dump.h"
 
 #ifndef CHROMA_H
 #define CHROMA_H
@@ -246,7 +247,11 @@ static inline void __not_in_flash_func(chroma_calibrate)(uint16_t row)
     case STEP1:
         calibration_step1(row);
         if (frame == 200 && row == 300)
+        {
             c_step = STEP2;
+            uart_log_putln("STEP1 finished");
+            uart_log_flush_blocking();
+        }
         break;
 
     case STEP2:
@@ -254,13 +259,16 @@ static inline void __not_in_flash_func(chroma_calibrate)(uint16_t row)
         if (frame == 400 && row == 300)
         {
             _process_stats();
+            uart_log_putln("STEP2 finished");
+            uart_log_flush_blocking();
             c_step = SAVE;
         }
         break;
     case SAVE:
-
-        if (frame == 500)
+        if (frame == 500 && row == 300)
         {
+            uart_log_putln("requesting calibration data save");
+            uart_log_flush_blocking();
             app_cfg.enableChroma = true;
             set_post_boot_action(WRITE_CONFIG);
             set_post_boot_action(WRITE_PRESET);

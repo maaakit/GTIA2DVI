@@ -1,4 +1,5 @@
 #include "flash_storage.h"
+#include "uart_log.h"
 
 #ifndef POST_BOOT_H
 #define POST_BOOT_H
@@ -25,18 +26,21 @@ void exec_post_boot_action()
         post_boot_action = 0;
         return;
     }
-
+    uart_log_putln("executing post boot actions:");
     if (post_boot_action & FACTORY_RESET)
     {
         flash_factory_reset();
+        uart_log_putln("  factory reset - done");
     }
     if (post_boot_action & WRITE_PRESET)
     {
         flash_save_preset((uint8_t *)&calibration_data);
+        uart_log_putln("  calibration data - saved");
     }
     if (post_boot_action & WRITE_CONFIG)
     {
         flash_save_config(&app_cfg);
+        uart_log_putln("  config data - saved");
     }
 
     post_boot_action = 0;

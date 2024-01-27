@@ -220,7 +220,7 @@ static __attribute__((noinline)) void __not_in_flash_func(calibrate_luma)(bool (
 
 void __not_in_flash_func(calibrate_chroma)()
 {
-
+    uart_log_putln("starting chroma calibration");
     chroma_hwd_init();
 
     chroma_calibration_init();

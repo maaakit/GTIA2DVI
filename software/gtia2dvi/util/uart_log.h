@@ -6,8 +6,8 @@
 #define UART_LOG_BUF_SIZE 1024
 #define UART_LOG_PIO pio0
 #define UART_LOG_SM 3
-#define UART_LOG_SERIAL_BAUD 1000000
-#define UART_LOG_TX_PIN 21
+#define UART_LOG_SERIAL_BAUD 2000000
+#define UART_LOG_TX_PIN 22
 
 static char uart_8n1_buffer[UART_LOG_BUF_SIZE];
 

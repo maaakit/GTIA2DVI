@@ -8,7 +8,8 @@ Powstało wiele urządzeń oraz modów toru video Atari w mniejszym lub większy
 Jednak wszystkie te rozwiązania polegaja na zmianie parametrów obrazu analogowego a następnie jego digitalizację i 
 konwersję do obrazu cyfrowego.
 
-Ten projekt jest próbą rozwiązania problemu w pełni w domenie cyfrowej.
+Ten projekt jest próbą rozwiązania problemu w pełni w domenie cyfrowej. Sercem projektu jest mikrokontroler RP2040 i biblioteka [PicoDVI](https://github.com/Wren6991/PicoDVI) dzięki której może on generować obraz DVI. GTIA2DVI w sposób software'owy ale z wykorzystaniem udostępnianego przez
+RP2040 hardweru tj: DMA, PIO, Interpolator realizuje dekodowanie sygnałów generowanych przez Atari oraz tworzenie obrazu.
 
 ## Szczegóły techniczne
 

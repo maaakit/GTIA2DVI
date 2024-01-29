@@ -6,6 +6,7 @@
 | R1 - R8  | rezystor                    | 270R    |
 | R9 - R14 | nie montować                |         |
 | X1       | Raspberry Pi Pico           |         |
+| IC2      | 74AC541                     |         |
 | IC4P     | podstawka 40pin             |         |
 | IC5P     | pin header 2x20             |         |
 | DVI      | złącze DVI lub kompatybilne |         |

@@ -7,7 +7,15 @@
 #define UART_LOG_PIO pio0
 #define UART_LOG_SM 3
 #define UART_LOG_SERIAL_BAUD 2000000
-#define UART_LOG_TX_PIN 22
+#define UART_LOG_TX_PIN 21
+
+#ifdef LOG_ENABLED
+#define UART_LOG_PUTLN(msg) uart_log_putln(msg)
+#define UART_LOG_FLUSH() uart_log_flush()
+#else
+#define UART_LOG_PUTLN(msg) ((void)0)
+#define UART_LOG_FLUSH(msg) ((void)0)
+#endif
 
 static char uart_8n1_buffer[UART_LOG_BUF_SIZE];
 
@@ -26,7 +34,7 @@ static inline void uart_update_clkdiv()
 }
 
 // TODO: non blocking DMA here !
-static inline void uart_log_flush()
+static inline void __not_in_flash_func(uart_log_flush)()
 {
     while (uart_8n1_index_end != uart_8n1_index_cur)
     {
@@ -43,7 +51,7 @@ static inline void uart_log_flush()
     }
 }
 
-static inline void uart_log_flush_blocking()
+static inline void __not_in_flash_func(uart_log_flush_blocking)()
 {
     while (uart_8n1_index_end != uart_8n1_index_cur)
     {
@@ -51,7 +59,7 @@ static inline void uart_log_flush_blocking()
     }
 }
 
-static inline void uart_log_put(char *s)
+static inline void __not_in_flash_func(uart_log_put)(char *s)
 {
     while (*s)
     {
@@ -62,7 +70,7 @@ static inline void uart_log_put(char *s)
         }
     }
 }
-static inline void uart_log_putln(char *s)
+static inline void __not_in_flash_func(uart_log_putln)(char *s)
 {
     uart_log_put(s);
     uart_log_put("\n");

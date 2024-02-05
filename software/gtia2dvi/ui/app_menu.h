@@ -4,6 +4,7 @@
 #include "../util/buttons.h"
 #include "../util/post_boot.h"
 #include "../video_channel.h"
+#include "../cfg.h"
 
 #define MENU_BOX_X 8
 #define MENU_BOX_Y 6
@@ -18,6 +19,7 @@ void save_config();
 void force_restart();
 void luma_exit();
 void none();
+void show_calibration_data();
 
 struct TextBox header = {
     .text = "ATARI GTIA2DVI MENU",
@@ -31,7 +33,7 @@ struct TextBox header = {
 
 struct MenuItem mainMenuItems[] = {
     {"Chroma calibration", chroma_calibration},
-    {"Chroma calibration done", none},
+    {"Chroma calibration done", show_calibration_data},
     {"Chroma decode (experimental)", toggle_chroma_decode_val},
     {"Factory reset", factory_reset},
     {"Restart", force_restart},
@@ -184,6 +186,41 @@ void factory_reset()
 void force_restart()
 {
     watchdog_enable(1, 1);
+}
+
+void inline bar(uint x, uint y, uint w, uint h, uint16_t color)
+{
+    for (int xx = x; xx < x + w; xx++)
+    {
+        for (int yy = y; yy < y + h; yy++)
+        {
+            plotf(xx, yy, color);
+        }
+    }
+}
+
+#define SIZEXY 5
+
+void show_calibration_data()
+{
+    fill_scren(BLACK);
+    for (int x = 0; x < 32; x++)
+    {
+        for (int y = 0; y < 32; y++)
+        {
+            for (int z = 0; z < 2; z++)
+            {
+                uint16_t sample = /* sgn << 10 |*/ x << 5 | y;
+                int8_t color_index = chroma_table[sample][z];
+                uint16_t rgb565 = (color_index < 0) ? GRAY(3) : gtia_palette[color_index * 16 + 6];
+                bar(10 + x * SIZEXY + z * 180, 40 + y * SIZEXY, SIZEXY - 1, SIZEXY - 1, rgb565);
+            }
+        }
+    }
+    while (true)
+    {
+        tight_loop_contents();
+    }
 }
 
 void none() {}

@@ -44,7 +44,7 @@ int main()
 	if (flash_preset_saved())
 	{
 		uart_log_putln("preset loaded");
-		flash_load_preset((uint8_t *)calibration_data);
+		flash_load_preset((uint8_t *)chroma_table);
 		preset_loaded = true;
 	}
 	else

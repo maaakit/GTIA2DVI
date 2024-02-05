@@ -16,9 +16,10 @@
 #define LED_PIN 25
 
 #define FORCE_MENU false
+#define LOG_ENABLED
 
 #define INVALID_CHROMA_HANDLER (gtia_palette[luma])
-// #define INVALID_CHROMA_HANDLER (YELLOW)
+//#define INVALID_CHROMA_HANDLER (YELLOW)
 
 struct AppConfig
 {
@@ -26,9 +27,23 @@ struct AppConfig
     uint32_t pad;
 };
 
-uint8_t calibration_data[2048][2] __attribute__((section(".uninitialized_data")));
-
 struct AppConfig app_cfg __attribute__((section(".uninitialized_data")));
+
+
+
+
+#define SAMPLING_FRAMES     20
+#define SAMPLE_Y_FIRST      70
+#define SAMPLE_Y_LAST       155
+#define SAMPLE_X_FIRST      41
+#define SAMPLE_X_SIZE       8
+
+#define COUNTS              250
+
+#define MIN_CALIB_COUNT     0
+#define MAX_SAMPLE          0x3ff
+int8_t chroma_table[MAX_SAMPLE+1][2] __attribute__((section(".uninitialized_data")));
+
 
 void cfg_init()
 {

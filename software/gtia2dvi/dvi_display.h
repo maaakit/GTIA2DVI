@@ -35,14 +35,26 @@ static void __not_in_flash_func(core1_main)()
 	dvi_scanbuf_main_16bpp(&dvi0);
 	__builtin_unreachable();
 }
+
+#define LED_WAIT_SCAN
+
 static uint scanline = 2;
 static void __not_in_flash_func(core1_scanline_callback)()
 {
 	// Discard any scanline pointers passed back
 	uint16_t *bufptr;
+#ifdef LED_WAIT_SCAN    
+    gpio_put(LED_PIN, 1);
+	//sleep_us(1);
+#endif
 	while (queue_try_remove_u32(&dvi0.q_colour_free, &bufptr))
 		;
 	// // Note first two scanlines are pushed before DVI start
+
+#ifdef LED_WAIT_SCAN
+
+    gpio_put(LED_PIN, 0);
+#endif
 
 	bufptr = &framebuf[FRAME_WIDTH * (scanline)];
 	queue_add_blocking_u32(&dvi0.q_colour_valid, &bufptr);

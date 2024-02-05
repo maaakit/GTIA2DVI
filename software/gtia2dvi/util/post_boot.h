@@ -8,8 +8,7 @@ enum PostBootAction
 {
     FACTORY_RESET = (1 << 0),
     WRITE_PRESET = (1 << 1),
-    WRITE_CONFIG = (1 << 2),
-    START_CHROMA_CALIBRATION = (1 << 3)
+    WRITE_CONFIG = (1 << 2)
 };
 
 enum PostBootAction post_boot_action __attribute__((section(".uninitialized_data")));
@@ -27,6 +26,13 @@ void exec_post_boot_action()
         return;
     }
     uart_log_putln("executing post boot actions:");
+
+    if (post_boot_action == 0)
+    {
+        uart_log_putln("  nothing requested");
+        return;
+    }
+
     if (post_boot_action & FACTORY_RESET)
     {
         flash_factory_reset();
@@ -34,7 +40,7 @@ void exec_post_boot_action()
     }
     if (post_boot_action & WRITE_PRESET)
     {
-        flash_save_preset((uint8_t *)&calibration_data);
+        flash_save_preset((uint8_t *)&chroma_table);
         uart_log_putln("  calibration data - saved");
     }
     if (post_boot_action & WRITE_CONFIG)

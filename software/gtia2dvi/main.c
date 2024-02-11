@@ -11,6 +11,7 @@
 #include "ui/app_menu.h"
 #include "util/post_boot.h"
 #include "util/uart_log.h"
+#include "clock_sync.h"
 
 int main()
 {
@@ -40,6 +41,10 @@ int main()
 		uart_log_putln("using default config");
 		cfg_init();
 	}
+
+	setup_atari_clocks();
+	measure_freq(CLOCKS_FC0_SRC_VALUE_CLKSRC_GPIN0, "PAL");
+	measure_freq(CLOCKS_FC0_SRC_VALUE_CLKSRC_GPIN1, "OSC");
 
 	if (flash_preset_saved())
 	{

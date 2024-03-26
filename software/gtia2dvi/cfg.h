@@ -17,6 +17,7 @@
 
 #define FORCE_MENU false
 #define LOG_ENABLED
+//#define DUMP_FEATURE
 
 #define INVALID_CHROMA_HANDLER (gtia_palette[luma])
 //#define INVALID_CHROMA_HANDLER (YELLOW)
@@ -32,18 +33,19 @@ struct AppConfig app_cfg __attribute__((section(".uninitialized_data")));
 
 
 
-#define SAMPLING_FRAMES     20
+#define SAMPLING_FRAMES     10
 #define SAMPLE_Y_FIRST      70
 #define SAMPLE_Y_LAST       155
-#define SAMPLE_X_FIRST      41
-#define SAMPLE_X_SIZE       8
-
-#define COUNTS              250
+#define SAMPLE_X_FIRST      40
+#define SAMPLE_X_SIZE       9
+#define COUNTS              226
 
 #define MIN_CALIB_COUNT     0
 #define MAX_SAMPLE          0x3ff
 int8_t chroma_table[MAX_SAMPLE+1][2] __attribute__((section(".uninitialized_data")));
 
+// delays for aligning color data for even and odd lines
+uint delays[] = {39, 37};
 
 void cfg_init()
 {

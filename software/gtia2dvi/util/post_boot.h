@@ -13,13 +13,30 @@ enum PostBootAction
 
 enum PostBootAction post_boot_action __attribute__((section(".uninitialized_data")));
 
+uint32_t checksum __attribute__((section(".uninitialized_data")));
+
+
+uint32_t calculate_checksum(){
+    return 999 - post_boot_action;
+}
+
 void set_post_boot_action(enum PostBootAction action)
 {
     post_boot_action |= action;
+    checksum = calculate_checksum();
 }
 
 void exec_post_boot_action()
 {
+    if (checksum != calculate_checksum())
+    {
+        uart_log_putln("checksum invalid");
+        char buf[32];
+        sprintf(buf, "%d!=%d", checksum, calculate_checksum());
+        uart_log_putln(buf);
+        return;
+    }
+
     if (watchdog_caused_reboot() == false)
     {
         post_boot_action = 0;

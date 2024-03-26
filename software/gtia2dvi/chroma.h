@@ -5,23 +5,16 @@
 #include "gtia_palette.h"
 #include "util/flash_storage.h"
 #include "util/post_boot.h"
-#include "uart_dump.h"
-// #include "chroma_calib.h"
 
 #ifndef CHROMA_H
 #define CHROMA_H
 
 #define CHROMA_SAMPLES 250
 
-// #define CALIB_WITH_SGN 0
-
 uint32_t counts[COUNTS][2];
 uint16_t current_sample = 0;
 uint32_t sample_frame = 0;
 bool processing = false;
-// bool calib_finished = false;
-
-// uint8_t (*chroma_table)[2];
 
 uint16_t frame = 0;
 uint8_t buf_seq = 0;
@@ -32,10 +25,11 @@ static uint16_t __scratch_y("decode_color") decode_color(int x, int buf_seq);
 
 static void inline calib_init()
 {
-    // chroma_table = (uint8_t(*)[2])USBCTRL_DPRAM_BASE;
-    for (int i = 0; i < MAX_SAMPLE; i++)
-        for (int j = 0; j < 2; j++)
-            chroma_table[i][j] = -1;
+    for (int i = 0; i <= MAX_SAMPLE; i++)
+    {
+        chroma_table[i][0] = -1;
+        chroma_table[i][1] = -1;
+    }
 }
 
 static void inline calib_clear()
@@ -92,6 +86,41 @@ static void inline calib_redraw(int row, int buf_seq)
     }
 }
 
+static int v_a = 0, v_b = 0;
+
+uint16_t next_sample()
+{
+    v_a++;
+    if ((v_a + v_b) > 32)
+    {
+        v_a = 0;
+        v_b++;
+    }
+    return (v_b * 32) + v_a;
+}
+
+static void inline next_sample2()
+{
+    calib_clear();
+
+    current_sample = next_sample();
+
+    if (current_sample > MAX_SAMPLE)
+    {
+        //  calib_finished = true;
+        UART_LOG_PUTLN("calibration finished");
+        UART_LOG_PUTLN("saving preset");
+        app_cfg.enableChroma = true;
+        set_post_boot_action(WRITE_CONFIG);
+        set_post_boot_action(WRITE_PRESET);
+        watchdog_enable(1, 1);
+        while (true)
+        {
+            UART_LOG_FLUSH();
+        }
+    }
+}
+
 static void inline calib_handle(int row)
 {
     char buf[32];
@@ -131,29 +160,19 @@ static void inline calib_handle(int row)
                 }
             }
             if (max_sum > MIN_CALIB_COUNT)
+            {
                 chroma_table[current_sample][z] = max_index + 1;
+                uint x = current_sample >> 5;
+                uint y = current_sample & 0x1f;
 
-            plotf(266 + (current_sample % 4), 266 - (current_sample / 4), WHITE );
+                plotf(280 + x, 40 + y + z * 40, gtia_palette[(max_index + 1) * 16 + 6]);
+            }
+
+            plotf(266 + (current_sample % 4), 266 - (current_sample / 4), WHITE);
         }
         if (row == 7)
         {
-            calib_clear();
-            current_sample++;
-
-            if (current_sample > MAX_SAMPLE)
-            {
-                //  calib_finished = true;
-                UART_LOG_PUTLN("calibration finished");
-                UART_LOG_PUTLN("saving preset");
-                app_cfg.enableChroma = true;
-                set_post_boot_action(WRITE_CONFIG);
-                set_post_boot_action(WRITE_PRESET);
-                watchdog_enable(1, 1);
-                while (true)
-                {
-                    UART_LOG_FLUSH();
-                }
-            }
+            next_sample2();
             processing = false;
         }
     }
@@ -204,43 +223,32 @@ static inline __force_inline uint32_t popcount3(uint32_t x) // 0x84
 #define POPCNT popcount3
 
 //__attribute__((noinline))
-static uint16_t inline __inline __scratch_y("decode_color") decode_color(int x, int buf_seq)
-{
-    uint32_t color = color_buf[buf_seq][x];
-    uint32_t pal = pal_buf[buf_seq][x];
 
+static int8_t inline __inline __scratch_y("popcount") popcount(uint32_t data)
+{
+    return POPCNT(data);
+}
+
+static uint16_t inline __inline __scratch_y("zz") decode(uint32_t color, uint32_t pal)
+{
     uint32_t v1 = color & (~pal);
     uint32_t v2 = (~color) & pal;
 
     uint32_t vv1 = POPCNT(v1);
     uint32_t vv2 = POPCNT(v2);
-    uint32_t sgn = 0;
 
-    sgn = 0; // POPCNT(color) & 0x3;
-
-    return sgn << 10 | vv1 << 5 | vv2;
+    return vv1 << 5 | vv2;
 }
 
 static int8_t inline __inline __scratch_y("match_color") match_color(uint32_t color, uint32_t pal, int row)
 {
-    // uint32_t color = color_buf[buf_seq][x];
-    // uint32_t pal = pal_buf[buf_seq][x];
-
-    // if (POPCNT(color)<8)
-    // return 0;
-
-    uint32_t v1 = color & (~pal);
-    uint32_t v2 = (~color) & pal;
-
-    uint32_t vv1 = POPCNT(v1);
-    uint32_t vv2 = POPCNT(v2);
-    uint32_t sgn = 0;
-
-   // sgn = 0; // POPCNT(color) & 0x3;
-
-    uint16_t sample = /* sgn << 10 |*/ vv1 << 5 | vv2;
-
-    return chroma_table[sample][row % 2];
+    return chroma_table[decode(color, pal)][row % 2];
 }
 
+static uint16_t inline __inline __scratch_y("decode_color") decode_color(int x, int buf_seq)
+{
+    uint32_t color = color_buf[buf_seq][x];
+    uint32_t pal = pal_buf[buf_seq][x];
+    return decode(color, pal);
+}
 #endif

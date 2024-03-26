@@ -58,9 +58,8 @@ int main()
 	uart_log_putln("menu requested");
 	uart_log_flush_blocking();
 
-	sleep_ms(500);
 	vreg_set_voltage(VREG_VSEL);
-	sleep_ms(500);
+	sleep_ms(100);
 
 	uart_log_putln("about to start dvi infrastructure");
 	uart_log_flush_blocking();
@@ -72,7 +71,7 @@ int main()
 		uart_log_flush_blocking();
 		main_menu_show();
 	}
-
+	sleep_ms(500);
 	uart_log_putln("about to start gtia video stream");
 	uart_log_flush_blocking();
 	process_video_stream();

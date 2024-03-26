@@ -1,0 +1,74 @@
+
+.program gtia_color
+.define CSYNC_PIN  4
+.define OSC_PIN    5
+.define PAL_PIN    6
+.define COLOR_PIN   7
+
+
+.wrap_target
+    mov     X OSR                 ; X <- number of 1b samples
+    wait    1 irq 7 [0]            ; wait for irq 0 then clear  
+    nop [0]
+sample_loop:
+    in      pins 1                 ; 1b sample accquire
+    jmp     X-- sample_loop        ; loop
+.wrap
+
+% c-sdk {
+#include "hardware/clocks.h"
+#include "hardware/gpio.h"
+
+#define CSYNC_PIN 4
+#define OSC_PIN    5
+#define PAL_PIN    6
+#define COLOR_PIN   7
+#define GTIA_COLOR_PGM_OFFSET 15
+#define GTIA_COLOR_SM 2
+#define GTIA_COLOR_PIO pio1
+
+
+static inline void gtia_color_program_delay(uint delay)
+{
+    ; // gtia_color_program_instructions[1] = 0x3fc7;
+    if (delay >= 31)
+    {
+        uint instr1 = (0x3fc7 & 0xe0ff) | ((31 & 0x3f) << 8);
+        GTIA_COLOR_PIO->instr_mem[GTIA_COLOR_PGM_OFFSET + 1] = instr1;
+    }
+    delay = delay - 31;
+    uint instr2 = (0xa042 & 0xe0ff) | ((delay & 0x3f) << 8);
+    GTIA_COLOR_PIO->instr_mem[GTIA_COLOR_PGM_OFFSET + 2] = instr2;
+}
+
+static inline void gtia_color_program_init(uint32_t line_length) {
+
+   pio_add_program_at_offset(GTIA_COLOR_PIO, &gtia_color_program, GTIA_COLOR_PGM_OFFSET);
+
+    ;// load program
+    pio_sm_config c = gtia_color_program_get_default_config(GTIA_COLOR_PGM_OFFSET);
+    ;// set first program pin index
+    sm_config_set_in_pins(&c, COLOR_PIN); // for WAIT, IN
+    sm_config_set_jmp_pin(&c, CSYNC_PIN);
+
+    ;// configure autopush  
+    sm_config_set_in_shift(&c, false, true, 32);
+    sm_config_set_out_shift(&c, false, true, 32);
+    ;// set clock divider to 1 for min delays
+
+    sm_config_set_clkdiv(&c, 1.00390625f  );
+
+    ;// init program
+    pio_sm_init(GTIA_COLOR_PIO, GTIA_COLOR_SM, GTIA_COLOR_PGM_OFFSET, &c);
+  
+    GTIA_COLOR_PIO->txf[GTIA_COLOR_SM] = 32 * line_length - 1;
+ ;//   pio_sm_exec(GTIA_COLOR_PIO, sm, pio_encode_mov(pio_y, pio_osr));
+
+    ;// start program
+    pio_sm_set_enabled(GTIA_COLOR_PIO, GTIA_COLOR_SM, true);
+
+
+
+}
+
+%}

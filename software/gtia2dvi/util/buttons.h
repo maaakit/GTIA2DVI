@@ -4,8 +4,8 @@
 #define BUTTONS_H
 
 // buttons has to be continous GPIO numbers
-#define BTN_A 8
-#define BTN_B 9
+#define BTN_A 10
+#define BTN_B 11
 
 #define BTN_DOWN false
 

@@ -14,8 +14,8 @@
 #define MAGENTA (RED + BLUE)
 #define CYAN (GREEN + BLUE)
 #define GRAY(x) (((x) << 11) + ((x) << 6) + (x))
-#define GRAY1 ((7 << 11) + (7 << 6) + 7)
-#define GRAY2 ((14 << 11) + (14 << 6) + 14)
+#define GRAY1 (GRAY(7))
+#define GRAY2 (GRAY(14))
 
 struct gfx
 {

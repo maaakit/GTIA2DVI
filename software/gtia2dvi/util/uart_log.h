@@ -6,8 +6,11 @@
 #define UART_LOG_BUF_SIZE 1024
 #define UART_LOG_PIO pio0
 #define UART_LOG_SM 3
-#define UART_LOG_SERIAL_BAUD 2000000
-#define UART_LOG_TX_PIN 21
+#define UART_LOG_SERIAL_BAUD 115200
+// #define UART_LOG_TX_PIN 8
+#define UART_RX_PIN 9
+#define UART_TX_PIN 8
+#define UART_ID uart1
 
 #ifdef LOG_ENABLED
 #define UART_LOG_PUTLN(msg) uart_log_putln(msg)
@@ -25,29 +28,38 @@ static uint16_t uart_8n1_index_cur = 0;
 
 static inline void uart_log_init()
 {
-    uart_8n1_tx_program_init(UART_LOG_PIO, UART_LOG_SM, pio_add_program(UART_LOG_PIO, &uart_8n1_tx_program), UART_LOG_TX_PIN, UART_LOG_SERIAL_BAUD);
+    uart_init(UART_ID, UART_LOG_SERIAL_BAUD);
+    gpio_set_function(UART_TX_PIN, GPIO_FUNC_UART);
+    gpio_set_function(UART_RX_PIN, GPIO_FUNC_UART);
 }
 
 static inline void uart_update_clkdiv()
 {
-    uart_8n1_tx_update_clkdiv(UART_LOG_PIO, UART_LOG_SM, UART_LOG_SERIAL_BAUD);
+    uart_init(UART_ID, UART_LOG_SERIAL_BAUD);
+}
+
+static inline char __not_in_flash_func(get_char)()
+{
+    if (uart_is_readable(UART_ID))
+    {
+        return ((uart_hw_t *)UART_ID)->dr;
+    }
+    return 0;
 }
 
 // TODO: non blocking DMA here !
 static inline void __not_in_flash_func(uart_log_flush)()
 {
+
     while (uart_8n1_index_end != uart_8n1_index_cur)
     {
-        if (pio_sm_is_tx_fifo_full(UART_LOG_PIO, UART_LOG_SM))
-        {
+        if (!uart_is_writable(UART_ID))
             return;
-        }
-        pio_sm_put(UART_LOG_PIO, UART_LOG_SM, uart_8n1_buffer[uart_8n1_index_cur++]);
+
+        uart_putc(UART_ID, uart_8n1_buffer[uart_8n1_index_cur++]);
 
         if (uart_8n1_index_cur == UART_LOG_BUF_SIZE)
-        {
             uart_8n1_index_cur = 0;
-        }
     }
 }
 
@@ -74,18 +86,6 @@ static inline void __not_in_flash_func(uart_log_putln)(char *s)
 {
     uart_log_put(s);
     uart_log_put("\n");
-}
-static inline void uart_log_transfer(uint8_t *data, uint size)
-{
-    // to be implemented with DMA
-}
-static inline void uart_log_transfer16(uint16_t *data, uint size)
-{
-    // to be implemented with DMA
-}
-static inline void uart_log_transfer32(uint32_t *data, uint size)
-{
-    // to be implemented with DMA
 }
 
 #endif

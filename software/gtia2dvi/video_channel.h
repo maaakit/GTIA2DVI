@@ -25,8 +25,6 @@
 
 char buf[80];
 
-
-
 static inline void calibrate_luma();
 
 void __attribute__((noinline)) __not_in_flash_func(calibrate_chroma)();
@@ -332,43 +330,44 @@ static inline void _draw_luma_and_chroma_row(uint16_t row)
     }
     else
     {
-#endif    
-        for (uint32_t i = LUMA_START_OFFSET; i < (LUMA_LINE_LENGTH_BYTES / 2) - 2; i++)
-        {
-            uint32_t c = luma_buf[i];
-            uint32_t luma = c & 0xf;
-            uint16_t col565 = matched != -1 ? gtia_palette[matched * 16 + luma] : INVALID_CHROMA_HANDLER;
-            *pixel_ptr++ = col565;
+#endif
+        if (!btn_is_down(BTN_B))
+            for (uint32_t i = LUMA_START_OFFSET; i < (LUMA_LINE_LENGTH_BYTES / 2) - 2; i++)
+            {
+                uint32_t c = luma_buf[i];
+                uint32_t luma = c & 0xf;
+                uint16_t col565 = matched != -1 ? gtia_palette[matched * 16 + luma] : INVALID_CHROMA_HANDLER;
+                *pixel_ptr++ = col565;
 
-            luma = (c >> 4) & 0xf;
-            color_ptr++;
-            pal_ptr++;
+                luma = (c >> 4) & 0xf;
+                color_ptr++;
+                pal_ptr++;
 
-            matched = match_color(*color_ptr, *pal_ptr, row);
+                matched = match_color(*color_ptr, *pal_ptr, row);
 
-            col565 = matched != -1 ? gtia_palette[matched * 16 + luma] : INVALID_CHROMA_HANDLER;
-            *pixel_ptr++ = col565;
+                col565 = matched != -1 ? gtia_palette[matched * 16 + luma] : INVALID_CHROMA_HANDLER;
+                *pixel_ptr++ = col565;
 
-            luma = (c >> 8) & 0xf;
-            col565 = matched != -1 ? gtia_palette[matched * 16 + luma] : INVALID_CHROMA_HANDLER;
-            *pixel_ptr++ = col565;
+                luma = (c >> 8) & 0xf;
+                col565 = matched != -1 ? gtia_palette[matched * 16 + luma] : INVALID_CHROMA_HANDLER;
+                *pixel_ptr++ = col565;
 
-            luma = (c >> 12) & 0xf;
-            color_ptr += ((i) & 0x1) + 1;
-            pal_ptr += ((i) & 0x1) + 1;
+                luma = (c >> 12) & 0xf;
+                color_ptr += ((i) & 0x1) + 1;
+                pal_ptr += ((i) & 0x1) + 1;
 
-            matched = match_color(*color_ptr, *pal_ptr, row);
+                matched = match_color(*color_ptr, *pal_ptr, row);
 
-            col565 = matched != -1 ? gtia_palette[matched * 16 + luma] : INVALID_CHROMA_HANDLER;
-            *pixel_ptr++ = col565;
-        }
-#ifdef DUMP_PIXEL_FEATURE_ENABLED    
+                col565 = matched != -1 ? gtia_palette[matched * 16 + luma] : INVALID_CHROMA_HANDLER;
+                *pixel_ptr++ = col565;
+            }
+#ifdef DUMP_PIXEL_FEATURE_ENABLED
     }
     if (pointer_x != 0 && pointer_y != 0)
     {
         plotf(pointer_x, pointer_y, RED);
     }
-#endif    
+#endif
 }
 
 static inline void _draw_luma_only_row(uint16_t row)
@@ -406,17 +405,9 @@ void static handleButtons()
         sprintf(buf, "m: %d", mode);
         UART_LOG_PUTLN(buf);
 
-        if (btn_is_down(BTN_B))
-        {
-            force_dump = true;
-        }
-
-        // UART_LOG_PUTLN("BTN_A");
     }
     if (btn == BTN_B_SHORT)
     {
-        delays[0] = (delays[0] + 1) % 64;
-        delays[1] = delays[0];
     }
 }
 
@@ -444,7 +435,7 @@ void __attribute__((noinline)) __not_in_flash_func(handle_uart_rx)()
             delays[1] = (delays[1] + 1) % 64;
             sprintf(buf, "%d %d", delays[0], delays[1]);
             break;
-#ifdef DUMP_PIXEL_FEATURE_ENABLED            
+#ifdef DUMP_PIXEL_FEATURE_ENABLED
         case '8':
             pointer_y = (pointer_y - 1) % 288;
             break;

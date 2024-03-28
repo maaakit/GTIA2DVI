@@ -224,7 +224,7 @@ static inline void _draw_luma_mixed_with_chroma_row(uint16_t row)
     }
 }
 
-#ifdef DUMP_FEATURE
+#ifdef DUMP_PIXEL_FEATURE_ENABLED
 uint16_t pointer_x = 0, pointer_y = 0;
 char cmd = 0;
 
@@ -321,7 +321,7 @@ static inline void _draw_luma_and_chroma_row(uint16_t row)
     color_ptr += 27;
     pal_ptr += 27;
 
-#ifdef DUMP_FEATURE
+#ifdef DUMP_PIXEL_FEATURE_ENABLED
     if (cmd && y == pointer_y)
     {
         dump_pointer_data(row);
@@ -358,7 +358,7 @@ static inline void _draw_luma_and_chroma_row(uint16_t row)
             col565 = matched != -1 ? gtia_palette[matched * 16 + luma] : INVALID_CHROMA_HANDLER;
             *pixel_ptr++ = col565;
         }
-#ifdef DUMP_FEATURE    
+#ifdef DUMP_PIXEL_FEATURE_ENABLED    
     }
     if (pointer_x != 0 && pointer_y != 0)
     {
@@ -440,7 +440,7 @@ void __attribute__((noinline)) __not_in_flash_func(handle_uart_rx)()
             delays[1] = (delays[1] + 1) % 64;
             sprintf(buf, "%d %d", delays[0], delays[1]);
             break;
-#ifdef DUMP_FEATURE            
+#ifdef DUMP_PIXEL_FEATURE_ENABLED            
         case '8':
             pointer_y = (pointer_y - 1) % 288;
             break;

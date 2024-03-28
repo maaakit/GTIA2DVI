@@ -17,7 +17,7 @@
 
 #define FORCE_MENU false
 #define LOG_ENABLED
-//#define DUMP_FEATURE
+#define DUMP_PIXEL_FEATURE_ENABLED
 
 #define INVALID_CHROMA_HANDLER (gtia_palette[luma])
 //#define INVALID_CHROMA_HANDLER (YELLOW)

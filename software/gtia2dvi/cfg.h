@@ -11,7 +11,7 @@
 #define SCREEN_OFFSET_Y 0
 #define SCREEN_OFFSET_X 14
 
-#define VREG_VSEL VREG_VOLTAGE_1_30
+#define VREG_VSEL VREG_VOLTAGE_1_25
 
 #define LED_PIN 25
 
@@ -33,10 +33,10 @@ struct AppConfig app_cfg __attribute__((section(".uninitialized_data")));
 
 
 
-#define SAMPLING_FRAMES     10
+#define SAMPLING_FRAMES     12
 #define SAMPLE_Y_FIRST      70
 #define SAMPLE_Y_LAST       155
-#define SAMPLE_X_FIRST      40
+#define SAMPLE_X_FIRST      39
 #define SAMPLE_X_SIZE       9
 #define COUNTS              226
 

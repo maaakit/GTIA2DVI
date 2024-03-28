@@ -248,7 +248,8 @@ static void __attribute__((noinline)) dump_pointer_data(uint16_t row)
         uint16_t col565 = BLACK; // matched != -1 ? gtia_palette[matched * 16 + luma] : INVALID_CHROMA_HANDLER;
         if (pixel_ptr == pixel_catch_ptr)
         {
-            sprintf(buf, "px: %03d lu: %02d i: %03d co: %08x pa: %08x", pointer_x, luma, pal_ptr - pal_buf[buf_seq], *color_ptr, *pal_ptr);
+            sprintf(buf, "0 pos: %03d,%03d lu: %02d i: %03d co: %08x pa: %08x ne: %08x -> %d/%d",
+                    pointer_x, pointer_y, luma, pal_ptr - pal_buf[buf_seq], *color_ptr, *pal_ptr, *(color_ptr + 1), match_color(*color_ptr, *pal_ptr, row), match_color(*(color_ptr + 1), *(pal_ptr + 1), row));
             *pixel_ptr++ = WHITE;
         }
         else
@@ -263,7 +264,8 @@ static void __attribute__((noinline)) dump_pointer_data(uint16_t row)
         col565 = BLACK; // matched != -1 ? gtia_palette[matched * 16 + luma] : INVALID_CHROMA_HANDLER;
         if (pixel_ptr == pixel_catch_ptr)
         {
-            sprintf(buf, "px: %03d lu: %02d i: %03d co: %08x pa: %08x", pointer_x, luma, pal_ptr - pal_buf[buf_seq], *color_ptr, *pal_ptr);
+            sprintf(buf, "1 pos: %03d,%03d lu: %02d i: %03d co: %08x pa: %08x ne: %08x -> %d/%d",
+                    pointer_x, pointer_y, luma, pal_ptr - pal_buf[buf_seq], *color_ptr, *pal_ptr, *(color_ptr + 1), match_color(*color_ptr, *pal_ptr, row), match_color(*(color_ptr + 1), *(pal_ptr + 1), row));
             *pixel_ptr++ = WHITE;
         }
         else
@@ -273,7 +275,8 @@ static void __attribute__((noinline)) dump_pointer_data(uint16_t row)
         col565 = BLACK; // matched != -1 ? gtia_palette[matched * 16 + luma] : INVALID_CHROMA_HANDLER;
         if (pixel_ptr == pixel_catch_ptr)
         {
-            sprintf(buf, "px: %03d lu: %02d i: %03d co: %08x pa: %08x", pointer_x, luma, pal_ptr - pal_buf[buf_seq], *color_ptr, *pal_ptr);
+            sprintf(buf, "2 pos: %03d,%03d lu: %02d i: %03d co: %08x pa: %08x ne: %08x -> %d/%d",
+                    pointer_x, pointer_y, luma, pal_ptr - pal_buf[buf_seq], *color_ptr, *pal_ptr, *(color_ptr + 1), match_color(*color_ptr, *pal_ptr, row), match_color(*(color_ptr + 1), *(pal_ptr + 1), row));
             *pixel_ptr++ = WHITE;
         }
         else
@@ -288,7 +291,8 @@ static void __attribute__((noinline)) dump_pointer_data(uint16_t row)
         col565 = BLACK; // matched != -1 ? gtia_palette[matched * 16 + luma] : INVALID_CHROMA_HANDLER;
         if (pixel_ptr == pixel_catch_ptr)
         {
-            sprintf(buf, "px: %03d lu: %02d i: %03d co: %08x pa: %08x", pointer_x, luma, pal_ptr - pal_buf[buf_seq], *color_ptr, *pal_ptr);
+            sprintf(buf, "3 pos: %03d,%03d lu: %02d i: %03d co: %08x pa: %08x ne: %08x -> %d/%d",
+                    pointer_x, pointer_y, luma, pal_ptr - pal_buf[buf_seq], *color_ptr, *pal_ptr, *(color_ptr + 1), match_color(*color_ptr, *pal_ptr, row), match_color(*(color_ptr + 1), *(pal_ptr + 1), row));
             *pixel_ptr++ = WHITE;
         }
         else

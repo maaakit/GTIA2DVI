@@ -69,24 +69,24 @@ static const uint16_t colors[] = {
 
 static uint16_t *ptr_framebuf = framebuf;
 
-static inline void box(uint x, uint y, uint w, uint h, uint color_rgb_565)
-{
-    for (int i = x; i < x + w; i++)
-    {
-        plot(i, y, color_rgb_565);
-        plot(i, y + h, color_rgb_565);
-    }
-    for (int i = y; i < y + h; i++)
-    {
-        plot(x, i, color_rgb_565);
-        plot(x + w, i, color_rgb_565);
-    }
-}
-
 static inline void __not_in_flash("plotf") plotf(uint32_t x, uint32_t y, int16_t color_rgb_565)
 {
     if (x < FRAME_WIDTH && y < FRAME_HEIGHT)
         *(ptr_framebuf + (y * FRAME_WIDTH + x)) = color_rgb_565;
+}
+
+static inline void box(uint x, uint y, uint w, uint h, uint color_rgb_565)
+{
+    for (int i = x; i < x + w; i++)
+    {
+        plotf(i, y, color_rgb_565);
+        plotf(i, y + h, color_rgb_565);
+    }
+    for (int i = y; i < y + h; i++)
+    {
+        plotf(x, i, color_rgb_565);
+        plotf(x + w, i, color_rgb_565);
+    }
 }
 
 static void inline bar(uint x, uint y, uint w, uint h, uint16_t color)
@@ -99,5 +99,6 @@ static void inline bar(uint x, uint y, uint w, uint h, uint16_t color)
         }
     }
 }
+
 
 #endif // GFX_H

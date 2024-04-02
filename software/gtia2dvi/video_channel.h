@@ -29,7 +29,7 @@ static inline void calibrate_luma();
 
 void __attribute__((noinline)) __not_in_flash_func(calibrate_chroma)();
 
-uint16_t luma_buf[LUMA_LINE_LENGTH_BYTES / 2];
+uint16_t __scratch_x("luma_buf") luma_buf[LUMA_LINE_LENGTH_BYTES / 2];
 
 static inline void __scratch_y("wait_and_restart_dma") _wait_and_restart_dma(uint16_t row)
 {
@@ -129,11 +129,10 @@ static inline void _draw_positioning(uint16_t row)
     }
 }
 
-static uint32_t x_counts[2];
-static uint32_t x_sums[2];
-
 static __attribute__((noinline)) void __not_in_flash_func(_delays_calibration)(uint16_t row)
 {
+    static uint32_t x_counts[2];
+    static uint32_t x_sums[2];
     if (row == FIRST_GTIA_ROW_TO_SHOW && (frame % 20 == 0))
     {
         sprintf(buf, "%d %d %d %d %d %d", x_counts[0], x_sums[0], x_counts[1], x_sums[1], delays[0], delays[1]);
@@ -226,7 +225,7 @@ static inline void _draw_luma_mixed_with_chroma_row(uint16_t row)
 uint16_t pointer_x = 0, pointer_y = 0;
 char cmd = 0;
 
-static void __attribute__((noinline)) dump_pointer_data(uint16_t row)
+static void __attribute__((noinline)) __scratch_y("dump_pointer_data") dump_pointer_data(uint16_t row)
 {
     uint32_t y = row - FIRST_GTIA_ROW_TO_SHOW + SCREEN_OFFSET_Y;
     uint16_t *pixel_ptr = framebuf + y * FRAME_WIDTH + SCREEN_OFFSET_X;
@@ -301,7 +300,16 @@ static void __attribute__((noinline)) dump_pointer_data(uint16_t row)
 }
 #endif
 
-static inline void _draw_luma_and_chroma_row(uint16_t row)
+static inline uint16_t gtia_color_565(uint16_t *color_ptr, uint luma)
+{
+    // interp0->accum[0] = color * 32;
+    // interp0->add_raw[0] = luma * 2;
+    // uint16_t *color_location = interp0->peek[0];
+
+    return color_ptr[luma];
+}
+//__attribute__((noinline))
+static void inline __scratch_y("_draw_luma_and_chroma_row") _draw_luma_and_chroma_row(uint16_t row)
 {
 
     uint32_t y = row - FIRST_GTIA_ROW_TO_SHOW + SCREEN_OFFSET_Y;
@@ -312,8 +320,7 @@ static inline void _draw_luma_and_chroma_row(uint16_t row)
         return;
     }
 
-    uint16_t *matched = &gtia_palette;
-
+    uint16_t *matched = &gtia_palette[0];
     uint16_t *pixel_ptr = framebuf + y * FRAME_WIDTH + SCREEN_OFFSET_X;
 
     // uint32_t *chroma_sample_ptr = chroma_buf[buf_seq];
@@ -324,6 +331,8 @@ static inline void _draw_luma_and_chroma_row(uint16_t row)
     color_ptr += 27;
     pal_ptr += 27;
 
+    uint32_t pattern = 0b10011001;
+
 #ifdef DUMP_PIXEL_FEATURE_ENABLED
     if (cmd && y == pointer_y)
     {
@@ -333,33 +342,46 @@ static inline void _draw_luma_and_chroma_row(uint16_t row)
     {
 #endif
         if (!btn_is_down(BTN_B))
-            for (uint32_t i = LUMA_START_OFFSET; i < (LUMA_LINE_LENGTH_BYTES / 2) - 40; i++)
+            for (uint32_t i = LUMA_START_OFFSET; i < (LUMA_LINE_LENGTH_BYTES / 2) -2; i++)
             {
                 uint32_t c = luma_buf[i];
                 uint32_t luma = c & 0xf;
-                uint16_t col565 = matched[luma];
+                uint16_t col565 = gtia_color_565(matched, luma); // matched != -1 ? gtia_color_565(matched, luma) : gtia_color_565(0, luma); //  gtia_palette[matched * 16 + luma] : INVALID_CHROMA_HANDLER;
                 *pixel_ptr++ = col565;
 
                 luma = (c >> 4) & 0xf;
-                color_ptr++;
-                pal_ptr++;
+                if (pattern & 1)
+                {
+                    color_ptr++;
+                    pal_ptr++;
+                }
+                else
+                {
+                    color_ptr += 2;
+                    pal_ptr += 2;
+                }
+                pattern = pattern >> 1;
+                if (pattern == 0)
+                {
+                    pattern = 0b10011001;
+                }
 
                 matched = match_color(*color_ptr, *pal_ptr, row);
 
-                col565 = matched[luma];
+                col565 = gtia_color_565(matched, luma); // matched != -1 ? gtia_color_565(matched, luma) : gtia_color_565(0, luma); //  gtia_palette[matched * 16 + luma] : INVALID_CHROMA_HANDLER;
                 *pixel_ptr++ = col565;
 
                 luma = (c >> 8) & 0xf;
-                col565 = matched[luma];
+                col565 = gtia_color_565(matched, luma); // matched != -1 ? gtia_color_565(matched, luma) : gtia_color_565(0, luma); //  gtia_palette[matched * 16 + luma] : INVALID_CHROMA_HANDLER;
                 *pixel_ptr++ = col565;
 
                 luma = (c >> 12) & 0xf;
-                color_ptr += ((i) & 0x1) + 1;
-                pal_ptr += ((i) & 0x1) + 1;
+                color_ptr += 1; //((i) & 0x1) + 1;
+                pal_ptr += 1;   // ((i) & 0x1) + 1;
 
                 matched = match_color(*color_ptr, *pal_ptr, row);
 
-                col565 = matched[luma];
+                col565 = gtia_color_565(matched, luma); // matched != -1 ? gtia_color_565(matched, luma) : gtia_color_565(0, luma); //  gtia_palette[matched * 16 + luma] : INVALID_CHROMA_HANDLER;
                 *pixel_ptr++ = col565;
             }
 #ifdef DUMP_PIXEL_FEATURE_ENABLED
@@ -462,8 +484,12 @@ void __attribute__((noinline)) __not_in_flash_func(handle_uart_rx)()
 
 void __not_in_flash_func(process_video_stream)()
 {
-    gtia_color_trans_table_init();
     _setup_gtia_interface();
+    chroma_decoder_init();
+
+    // interp_config cfg = interp_default_config();
+    // interp_set_config(interp0, 0, &cfg);
+    // interp0->base[0] = gtia_palette;
 
     uint16_t row = 0;
     while (true)
@@ -503,7 +529,7 @@ void __not_in_flash_func(process_video_stream)()
         {
             //_delays_calibration(row);
             // _draw_luma_mixed_with_chroma_row(row);
-            _draw_luma_only_row(row);
+           //  _draw_luma_only_row(row);
         }
     }
 }

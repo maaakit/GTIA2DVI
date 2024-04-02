@@ -9,9 +9,9 @@
 #ifndef CHROMA_H
 #define CHROMA_H
 
-#define CHROMA_SAMPLES 250
+#define CHROMA_SAMPLES 248
 
-uint32_t counts[COUNTS][2];
+uint16_t __scratch_x("counts")  counts[COUNTS][2];
 uint16_t current_sample = 0;
 uint32_t sample_frame = 0;
 bool processing = false;
@@ -20,28 +20,29 @@ uint16_t frame = 0;
 uint8_t buf_seq = 0;
 uint32_t color_buf[2][CHROMA_SAMPLES];
 uint32_t pal_buf[2][CHROMA_SAMPLES];
-const uint16_t *(*gtia_color_trans_table)[2];
+int16_t *chroma_decoder_table[MAX_SAMPLE + 1][2];
 
-static uint16_t __scratch_y("decode_color") decode_color(int x, int buf_seq);
+static uint16_t __not_in_flash_func(  decode_color)(int x, int buf_seq);
 
-static inline const uint16_t* compute_gtia_palette_color_adr(int sample, int row)
+
+
+static void inline trans(int a, int b)
 {
-    int8_t col = chroma_table[sample][row];
+    int8_t col = chroma_table[a][b];
     if (col == -1)
     {
         col = 0;
     }
-    return &gtia_palette[col * 16];
+    int16_t *rgb_ptr = &gtia_palette[col * 16];
+    chroma_decoder_table[a][b] = rgb_ptr;
 }
 
-static void inline gtia_color_trans_table_init()
+static void inline chroma_decoder_init()
 {
-    gtia_color_trans_table = (const uint16_t * (*)[2])0x50100000;
-
-    for (int sample = 0; sample <= MAX_SAMPLE; sample++)
+    for (int a = 0; a <=MAX_SAMPLE ; a++)
     {
-        gtia_color_trans_table[0][sample] = compute_gtia_palette_color_adr(sample, 0);
-        gtia_color_trans_table[1][sample] = compute_gtia_palette_color_adr(sample, 1);
+        trans(a, 0);
+        trans(a, 1);
     }
 }
 
@@ -108,7 +109,7 @@ static void inline calib_redraw(int row, int buf_seq)
     }
 }
 
-static int v_a = 0, v_b = 0;
+static uint16_t v_a = 0, v_b = 0;
 
 uint16_t next_sample()
 {
@@ -168,7 +169,7 @@ static void inline calib_handle(int row)
                 uint pixel_sum = 0;
                 for (int i = 0; i < SAMPLE_X_SIZE; i++)
                 {
-                    pixel_sum += counts[((col * 25) / 2) + SAMPLE_X_FIRST + i][z];
+                    pixel_sum += counts[((col * 25) / 2) + SAMPLE_X_FIRST + i + (col % 2 ? 0 : 1)][z];
                 }
                 if (pixel_sum > 0)
                 {
@@ -246,12 +247,12 @@ static inline __force_inline uint32_t popcount3(uint32_t x) // 0x84
 
 //__attribute__((noinline))
 
-static int8_t inline __inline __scratch_y("popcount") popcount(uint32_t data)
+static int8_t inline __inline __not_in_flash_func(popcount)(uint32_t data)
 {
     return POPCNT(data);
 }
 
-static const uint16_t inline __inline __scratch_y("zz") decode(uint32_t color, uint32_t pal)
+static uint16_t inline __inline __not_in_flash_func(decode)(uint32_t color, uint32_t pal)
 {
     uint32_t v1 = color & (~pal);
     uint32_t v2 = (~color) & pal;
@@ -262,13 +263,14 @@ static const uint16_t inline __inline __scratch_y("zz") decode(uint32_t color, u
     return vv1 << 5 | vv2;
 }
 
-static inline __inline __scratch_y("match_color") uint16_t *match_color(uint32_t color, uint32_t pal, int row)
+static inline uint16_t *match_color(uint32_t color, uint32_t pal, int row)
 {
-    uint16_t sample = decode(color, pal);
-    return gtia_color_trans_table[row % 2][sample];
+    // return chroma_table[decode(color, pal)][row % 2];
+
+    return chroma_decoder_table[decode(color, pal)][row % 2];
 }
 
-static uint16_t inline __inline __scratch_y("decode_color") decode_color(int x, int buf_seq)
+static uint16_t inline __inline __not_in_flash_func( decode_color)(int x, int buf_seq)
 {
     uint32_t color = color_buf[buf_seq][x];
     uint32_t pal = pal_buf[buf_seq][x];

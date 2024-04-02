@@ -3,9 +3,9 @@
 #ifndef UART_LOG_H
 #define UART_LOG_H
 
-#define UART_LOG_BUF_SIZE 1024
-#define UART_LOG_PIO pio0
-#define UART_LOG_SM 3
+#define UART_LOG_BUF_SIZE 128
+// #define UART_LOG_PIO pio0
+// #define UART_LOG_SM 3
 #define UART_LOG_SERIAL_BAUD 115200
 // #define UART_LOG_TX_PIN 8
 #define UART_RX_PIN 9

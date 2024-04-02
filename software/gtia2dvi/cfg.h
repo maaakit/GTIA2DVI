@@ -36,13 +36,13 @@ struct AppConfig app_cfg __attribute__((section(".uninitialized_data")));
 #define SAMPLE_Y_LAST       155
 #define SAMPLE_X_FIRST      39
 #define SAMPLE_X_SIZE       9
-//#define COUNTS              226
-#define COUNTS              1
+#define COUNTS              226
+//#define COUNTS              1
 
 #define MIN_CALIB_COUNT     0
 #define MAX_SAMPLE          0x3ff
 
-int8_t chroma_table[(MAX_SAMPLE+1)*4][2] __attribute__((section(".uninitialized_data")));
+int8_t chroma_table[(MAX_SAMPLE+1)][2] __attribute__((section(".uninitialized_data")));
 
 // delays for aligning color data for even and odd lines
 uint8_t delays[] = {39, 37};

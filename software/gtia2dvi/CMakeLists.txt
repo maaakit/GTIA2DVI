@@ -12,8 +12,7 @@ pico_generate_pio_header(gtia2dvi ${CMAKE_CURRENT_LIST_DIR}/pio/gtia_color.pio)
 
 target_compile_definitions(gtia2dvi PRIVATE
 	DVI_DEFAULT_SERIAL_CONFIG=${DVI_DEFAULT_SERIAL_CONFIG}
-	PICO_STACK_SIZE=512
-	)
+)
 
 target_link_libraries(gtia2dvi 
 	pico_stdlib

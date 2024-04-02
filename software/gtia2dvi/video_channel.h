@@ -312,7 +312,8 @@ static inline void _draw_luma_and_chroma_row(uint16_t row)
         return;
     }
 
-    int32_t matched = 0;
+    uint16_t *matched = &gtia_palette;
+
     uint16_t *pixel_ptr = framebuf + y * FRAME_WIDTH + SCREEN_OFFSET_X;
 
     // uint32_t *chroma_sample_ptr = chroma_buf[buf_seq];
@@ -332,11 +333,11 @@ static inline void _draw_luma_and_chroma_row(uint16_t row)
     {
 #endif
         if (!btn_is_down(BTN_B))
-            for (uint32_t i = LUMA_START_OFFSET; i < (LUMA_LINE_LENGTH_BYTES / 2) - 2; i++)
+            for (uint32_t i = LUMA_START_OFFSET; i < (LUMA_LINE_LENGTH_BYTES / 2) - 40; i++)
             {
                 uint32_t c = luma_buf[i];
                 uint32_t luma = c & 0xf;
-                uint16_t col565 = matched != -1 ? gtia_palette[matched * 16 + luma] : INVALID_CHROMA_HANDLER;
+                uint16_t col565 = matched[luma];
                 *pixel_ptr++ = col565;
 
                 luma = (c >> 4) & 0xf;
@@ -345,11 +346,11 @@ static inline void _draw_luma_and_chroma_row(uint16_t row)
 
                 matched = match_color(*color_ptr, *pal_ptr, row);
 
-                col565 = matched != -1 ? gtia_palette[matched * 16 + luma] : INVALID_CHROMA_HANDLER;
+                col565 = matched[luma];
                 *pixel_ptr++ = col565;
 
                 luma = (c >> 8) & 0xf;
-                col565 = matched != -1 ? gtia_palette[matched * 16 + luma] : INVALID_CHROMA_HANDLER;
+                col565 = matched[luma];
                 *pixel_ptr++ = col565;
 
                 luma = (c >> 12) & 0xf;
@@ -358,7 +359,7 @@ static inline void _draw_luma_and_chroma_row(uint16_t row)
 
                 matched = match_color(*color_ptr, *pal_ptr, row);
 
-                col565 = matched != -1 ? gtia_palette[matched * 16 + luma] : INVALID_CHROMA_HANDLER;
+                col565 = matched[luma];
                 *pixel_ptr++ = col565;
             }
 #ifdef DUMP_PIXEL_FEATURE_ENABLED
@@ -404,7 +405,6 @@ void static handleButtons()
         }
         sprintf(buf, "m: %d", mode);
         UART_LOG_PUTLN(buf);
-
     }
     if (btn == BTN_B_SHORT)
     {
@@ -462,6 +462,7 @@ void __attribute__((noinline)) __not_in_flash_func(handle_uart_rx)()
 
 void __not_in_flash_func(process_video_stream)()
 {
+    gtia_color_trans_table_init();
     _setup_gtia_interface();
 
     uint16_t row = 0;
@@ -500,9 +501,9 @@ void __not_in_flash_func(process_video_stream)()
         }
         else
         {
-            _delays_calibration(row);
+            //_delays_calibration(row);
             // _draw_luma_mixed_with_chroma_row(row);
-            // _draw_luma_only_row(row);
+            _draw_luma_only_row(row);
         }
     }
 }

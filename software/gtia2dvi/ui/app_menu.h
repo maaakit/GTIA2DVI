@@ -188,16 +188,6 @@ void force_restart()
     watchdog_enable(1, 1);
 }
 
-void inline bar(uint x, uint y, uint w, uint h, uint16_t color)
-{
-    for (int xx = x; xx < x + w; xx++)
-    {
-        for (int yy = y; yy < y + h; yy++)
-        {
-            plotf(xx, yy, color);
-        }
-    }
-}
 
 #define SIZEXY 5
 

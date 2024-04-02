@@ -88,4 +88,16 @@ static inline void __not_in_flash("plotf") plotf(uint32_t x, uint32_t y, int16_t
     if (x < FRAME_WIDTH && y < FRAME_HEIGHT)
         *(ptr_framebuf + (y * FRAME_WIDTH + x)) = color_rgb_565;
 }
+
+static void inline bar(uint x, uint y, uint w, uint h, uint16_t color)
+{
+    for (int xx = x; xx < x + w; xx++)
+    {
+        for (int yy = y; yy < y + h; yy++)
+        {
+            plotf(xx, yy, color);
+        }
+    }
+}
+
 #endif // GFX_H

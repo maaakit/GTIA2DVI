@@ -300,15 +300,16 @@ static void __attribute__((noinline)) __scratch_y("dump_pointer_data") dump_poin
 }
 #endif
 
-static inline uint16_t gtia_color_565(uint luma)
-{
-    interp0->accum[1] = luma * 2;
-    uint16_t *color_location = interp0->peek[2];
+#define INTERP0_LUMA_SHIFT(x) (0x00001020+(x))
 
+static inline uint16_t gtia_color_565(uint32_t luma_shift)
+{
+    interp0->ctrl[1] = luma_shift; 
+    uint16_t *color_location = interp0->peek[2];
     return *color_location;
 }
 
-//__attribute__((noinline))
+
 static void inline __scratch_y("_draw_chroma_row") _draw_chroma_row(uint16_t row)
 {
 
@@ -320,7 +321,7 @@ static void inline __scratch_y("_draw_chroma_row") _draw_chroma_row(uint16_t row
     }
 }
 
-//__attribute__((noinline))
+
 static void inline __scratch_y("_draw_luma_and_chroma_row") _draw_luma_and_chroma_row(uint16_t row)
 {
 
@@ -351,16 +352,15 @@ static void inline __scratch_y("_draw_luma_and_chroma_row") _draw_luma_and_chrom
     else
     {
 #endif
-        //__breakpoint();
         if (!btn_is_down(BTN_B))
-            for (uint32_t i = LUMA_START_OFFSET; i < (LUMA_LINE_LENGTH_BYTES / 2) - 20; i++)
+        {
+            for (uint32_t i = LUMA_START_OFFSET; i < (LUMA_LINE_LENGTH_BYTES / 2)-2; i++)
             {
-                uint32_t c = luma_buf[i];
-                uint32_t luma = c & 0xf;
-                uint16_t col565 = gtia_color_565(luma); // matched != -1 ? gtia_color_565(matched, luma) : gtia_color_565(0, luma); //  gtia_palette[matched * 16 + luma] : INVALID_CHROMA_HANDLER;
-                *pixel_ptr++ = col565;
+                uint32_t luma_4px = luma_buf[i];
+                interp0->accum[1] = luma_4px << 1;
 
-                luma = (c >> 4) & 0xf;
+                *pixel_ptr++ = gtia_color_565(INTERP0_LUMA_SHIFT(0));
+
                 if (pattern & 1)
                 {
                     color_ptr++;
@@ -379,24 +379,17 @@ static void inline __scratch_y("_draw_luma_and_chroma_row") _draw_luma_and_chrom
 
                 matched = match_color(*color_ptr, *pal_ptr, row);
                 interp0->accum[0] = matched * 32;
+                *pixel_ptr++ = gtia_color_565(INTERP0_LUMA_SHIFT(4));
 
-                col565 = gtia_color_565(luma); // matched != -1 ? gtia_color_565(matched, luma) : gtia_color_565(0, luma); //  gtia_palette[matched * 16 + luma] : INVALID_CHROMA_HANDLER;
-                *pixel_ptr++ = col565;
+                *pixel_ptr++ = gtia_color_565(INTERP0_LUMA_SHIFT(8));
 
-                luma = (c >> 8) & 0xf;
-                col565 = gtia_color_565(luma); // matched != -1 ? gtia_color_565(matched, luma) : gtia_color_565(0, luma); //  gtia_palette[matched * 16 + luma] : INVALID_CHROMA_HANDLER;
-                *pixel_ptr++ = col565;
-
-                luma = (c >> 12) & 0xf;
-                color_ptr += 1; //((i) & 0x1) + 1;
-                pal_ptr += 1;   // ((i) & 0x1) + 1;
-
+                color_ptr += 1;
+                pal_ptr += 1;
                 matched = match_color(*color_ptr, *pal_ptr, row);
                 interp0->accum[0] = matched * 32;
-
-                col565 = gtia_color_565(luma); // matched != -1 ? gtia_color_565(matched, luma) : gtia_color_565(0, luma); //  gtia_palette[matched * 16 + luma] : INVALID_CHROMA_HANDLER;
-                *pixel_ptr++ = col565;
+                *pixel_ptr++ = gtia_color_565(INTERP0_LUMA_SHIFT(12));
             }
+        }
 #ifdef DUMP_PIXEL_FEATURE_ENABLED
     }
     if (pointer_x != 0 && pointer_y != 0)
@@ -500,22 +493,24 @@ void __not_in_flash_func(process_video_stream)()
     _setup_gtia_interface();
     gtia_color_trans_table_init();
 
-    interp_config cfg = interp_default_config();
-    interp_set_config(interp0, 0, &cfg);
-    interp_set_config(interp0, 1, &cfg);
+    interp_config cfg0 = interp_default_config();
+    interp_config cfg1 = interp_default_config();
+    interp_set_config(interp0, 0, &cfg0);
+    interp_config_set_mask(&cfg1, 1, 4);
+    interp_set_config(interp0, 1, &cfg1);
     interp0->base[2] = &gtia_palette;
 
     uint16_t row = 0;
     while (true)
     {
-        if (row == 2)
+        if (row == 1)
         {
             handleButtons();
         }
 
         uart_log_flush();
         _wait_and_restart_dma(row);
-        if (row == 1)
+        if (row == 2)
         {
             handle_uart_rx();
         }

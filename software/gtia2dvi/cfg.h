@@ -2,7 +2,6 @@
 #ifndef CFG_H
 #define CFG_H
 
-// #define PALETTE TRUE
 #define FRAME_WIDTH (768 / 2)
 #define FRAME_HEIGHT (576 / 2)
 
@@ -11,7 +10,7 @@
 #define SCREEN_OFFSET_Y 0
 #define SCREEN_OFFSET_X 14
 
-#define VREG_VSEL VREG_VOLTAGE_1_30
+#define VREG_VSEL VREG_VOLTAGE_1_25
 
 #define LED_PIN 25
 
@@ -19,8 +18,6 @@
 #define LOG_ENABLED
 //#define DUMP_PIXEL_FEATURE_ENABLED
 
-#define INVALID_CHROMA_HANDLER (gtia_palette[luma])
-//#define INVALID_CHROMA_HANDLER (YELLOW)
 
 struct AppConfig
 {

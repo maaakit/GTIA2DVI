@@ -35,11 +35,11 @@ static inline uint16_t compute_gtia_palette_color_adr(int sample, int row)
 
 static void inline gtia_color_trans_table_init()
 {
-    // for (int sample = 0; sample <= MAX_SAMPLE; sample++)
-    // {
-    //     chroma_table[sample][0] = compute_gtia_palette_color_adr(sample, 0);
-    //     chroma_table[sample][1] = compute_gtia_palette_color_adr(sample, 1);
-    // }
+    for (int sample = 0; sample <= MAX_SAMPLE; sample++)
+    {
+        chroma_table[sample][0] = compute_gtia_palette_color_adr(sample, 0);
+        chroma_table[sample][1] = compute_gtia_palette_color_adr(sample, 1);
+    }
 }
 
 static void inline calib_init()
@@ -262,10 +262,7 @@ static const uint16_t inline __inline __scratch_y("zz") decode(uint32_t color, u
 static inline __inline __scratch_y("match_color") uint8_t match_color(uint32_t color, uint32_t pal, int row)
 {
     uint16_t sample = decode(color, pal);
-    //  return gtia_palette + gtia_color_trans_table[sample * 2  + (row%2)] ;
-    
-    int8_t c = chroma_table[sample][row];
-    return  c<0 ? 0 : c;;
+    return  chroma_table[sample][row%2];
 }
 
 static uint16_t inline __inline __scratch_y("decode_color") decode_color(int x, int buf_seq)

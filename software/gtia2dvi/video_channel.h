@@ -11,27 +11,34 @@
 #ifndef VIDEO_CHANNEL_H
 #define VIDEO_CHANNEL_H
 
+// hardware configuration
 #define GTIA_PIO pio1
-
 #define LUMA_DMA_CHANNEL 9
 #define COLOR_DMA_CHANNEL 10
 #define PAL_DMA_CHANNEL 11
-
-#define LUMA_LINE_LENGTH_BYTES 202
-
-#define LUMA_START_OFFSET 12
-
 #define INPUT_PINS_MASK 0xff
 
-char buf[80];
+// row decoding logic configuration
+#define LUMA_LINE_LENGTH_BYTES 202
+#define LUMA_START_OFFSET 12
+#define LUMA_WORDS_TO_SKIP 2
+
+
+#define INTERP0_LUMA_SHIFT(x) (0x00001020 + (x))
+
 
 static inline void calibrate_luma();
 
 void __attribute__((noinline)) __not_in_flash_func(calibrate_chroma)();
 
+
 uint16_t __scratch_x("luma_buf") luma_buf[LUMA_LINE_LENGTH_BYTES / 2];
 
-static inline void __scratch_y("wait_and_restart_dma") _wait_and_restart_dma(uint16_t row)
+
+/*
+    this function waits until the data transfer of the line is completed and then initiates the transfer of the next one.
+*/
+static inline void _wait_and_restart_dma(uint16_t row)
 {
 #ifdef LED_WAIT_DMA
     gpio_put(LED_PIN, 1);
@@ -42,7 +49,7 @@ static inline void __scratch_y("wait_and_restart_dma") _wait_and_restart_dma(uin
     // set color delay for new line
     gtia_color_program_delay(delays[row % 2]);
 
-    // restart each DMA channel
+    // restart each DMA channel and set valid destination adress according to current bufer
     dma_channel_set_write_addr(PAL_DMA_CHANNEL, &pal_buf[buf_seq], true);
     dma_channel_set_write_addr(COLOR_DMA_CHANNEL, &color_buf[buf_seq], true);
     dma_channel_set_write_addr(LUMA_DMA_CHANNEL, &luma_buf, true);
@@ -51,10 +58,12 @@ static inline void __scratch_y("wait_and_restart_dma") _wait_and_restart_dma(uin
 #endif
 }
 
-static uint mode = 2;
-
-#define MIN_COLOR 10
-
+/*
+    setups all RP2040 hardware required to process GTIA data including:
+    * GPIO input pins
+    * DMA channels
+    * PIO state machines
+*/
 static inline void __not_in_flash_func(_setup_gtia_interface)()
 {
     // initialize all GPIO data pins as input
@@ -93,6 +102,418 @@ static inline void __not_in_flash_func(_setup_gtia_interface)()
     gtia_luma_ng_program_init(LUMA_LINE_LENGTH_BYTES);
 }
 
+/*
+  calculates RGB565 value of GTIA color based on luma and color values with interpolator 
+*/
+static inline uint16_t _gtia_color_565(uint32_t luma_shift)
+{
+    // update luma shift for interpolator for selecting right luma pixel
+    interp0->ctrl[1] = luma_shift;
+    // read pointer to rgb565 color from gtia_palette array calculated for color and luma by interp0
+    uint16_t *color_location = interp0->peek[2];
+    // returns rgb565 color value
+    return *color_location;
+}
+
+
+
+#ifdef DUMP_PIXEL_FEATURE_ENABLED
+uint16_t pxl_dump_pos_x = 0, pxl_dump_pos_y = 0;
+char cmd = 0;
+
+#define DUMP_PIXEL_DATA_IF_MATCH(X)                                                       \
+    if (pixel_ptr == pixel_catch_ptr)                                                     \
+    sprintf(buf, "%1d pos: %03d,%03d lu: %02d i: %03d pa: %08x co: %08x / %08x -> %d/%d", \
+            (X) / 4, pxl_dump_pos_x, pxl_dump_pos_y, _get_current_luma(INTERP0_LUMA_SHIFT(X)), pal_ptr - pal_buf[buf_seq], *pal_ptr, *color_ptr, *(color_ptr + 1), match_color(*color_ptr, *pal_ptr, row), match_color(*(color_ptr + 1), *(pal_ptr + 1), row))
+
+
+/*
+    gets current pixel luma value from interpolator
+*/
+static inline uint16_t _get_current_luma(uint32_t luma_shift)
+{
+    // update luma shift for interpolator for selecting right luma pixel
+    interp0->ctrl[1] = luma_shift;
+    // returns luma value for current pixel
+    return interp0->peek[1] >> 1;
+}
+
+/*
+    dumps to UART console debug data describing single pixel pointed by user.
+    pointed pixel is display as red dot that can be moved with UART console with numeric keys:
+    4 for left direction
+    8 for up direction
+    6 for right direction
+    2 for down
+    5 triggers data to be writen to UART
+*/
+static void  __not_in_flash_func(_locate_and_dump_pixel_data)(uint16_t row)
+{
+    uint32_t y = row - FIRST_GTIA_ROW_TO_SHOW + SCREEN_OFFSET_Y;
+    uint16_t *pixel_ptr = framebuf + y * FRAME_WIDTH + SCREEN_OFFSET_X;
+    uint16_t *pixel_catch_ptr = pixel_ptr + pxl_dump_pos_x - LUMA_START_OFFSET - LUMA_WORDS_TO_SKIP;
+    uint32_t *color_ptr = color_buf[buf_seq];
+    uint32_t *pal_ptr = pal_buf[buf_seq];
+
+    color_ptr += 27;
+    pal_ptr += 27;
+    uint32_t pattern = 0b10011001;
+
+    for (uint32_t i = LUMA_START_OFFSET; i < (LUMA_LINE_LENGTH_BYTES / 2) - 2; i++)
+    {
+        uint32_t luma_4px = luma_buf[i];
+        interp0->accum[1] = luma_4px << 1;
+
+        // first luma (hires) pixel
+        DUMP_PIXEL_DATA_IF_MATCH(0);
+        *pixel_ptr++ = BLACK;
+
+        // calculate and move to next chroma pixel
+        if (pattern & 1)
+        {
+            color_ptr++;
+            pal_ptr++;
+        }
+        else
+        {
+            color_ptr += 2;
+            pal_ptr += 2;
+        }
+        pattern = pattern >> 1;
+        if (pattern == 0)
+        {
+            pattern = 0b10011001;
+        }
+
+        // second luma (hires) pixel
+        DUMP_PIXEL_DATA_IF_MATCH(4);
+        *pixel_ptr++ = BLACK;
+
+        // third luma (hires) pixel
+        DUMP_PIXEL_DATA_IF_MATCH(8);
+        *pixel_ptr++ = BLACK;
+
+        // move to next chroma pixel
+        color_ptr++;
+        pal_ptr++;
+
+        // forth luma (hires) pixel
+        DUMP_PIXEL_DATA_IF_MATCH(12);
+        *pixel_ptr++ = BLACK;
+    }
+    uart_log_putln(buf);
+    cmd = 0;
+}
+#endif
+/*
+    A highly time-critical function. Processing data for each line must complete before starting the data stream for the next line
+*/
+static void __attribute__((noinline)) __scratch_y("_draw_luma_and_chroma_row") _draw_luma_and_chroma_row(uint16_t row)
+{
+
+    uint32_t y = row - FIRST_GTIA_ROW_TO_SHOW + SCREEN_OFFSET_Y;
+
+    if (y == scanline || y + 1 == scanline)
+    {
+        // don't modify line which is currently transferred to TDMS pipeline
+        return;
+    }
+
+    uint8_t matched = 0;
+    interp0->accum[0] = 0;
+    uint16_t *pixel_ptr = framebuf + y * FRAME_WIDTH + SCREEN_OFFSET_X;
+    uint32_t *color_ptr = color_buf[buf_seq];
+    uint32_t *pal_ptr = pal_buf[buf_seq];
+
+    color_ptr += 27;
+    pal_ptr += 27;
+    uint32_t pattern = 0b10011001;
+
+#ifdef DUMP_PIXEL_FEATURE_ENABLED
+    if (cmd && y == pxl_dump_pos_y)
+    {
+        _locate_and_dump_pixel_data(row);
+    }
+    else
+    {
+#endif
+        if (!btn_is_down(BTN_B))
+        {
+            for (uint32_t i = LUMA_START_OFFSET; i < (LUMA_LINE_LENGTH_BYTES / 2) - LUMA_WORDS_TO_SKIP; i++)
+            {
+                uint32_t luma_4px = luma_buf[i];
+                interp0->accum[1] = luma_4px << 1;
+
+                // first luma (hires) pixel
+                *pixel_ptr++ = _gtia_color_565(INTERP0_LUMA_SHIFT(0));
+
+                // calculate and move to next chroma pixel
+                if (pattern & 1)
+                {
+                    color_ptr++;
+                    pal_ptr++;
+                }
+                else
+                {
+                    color_ptr += 2;
+                    pal_ptr += 2;
+                }
+                pattern = pattern >> 1;
+                if (pattern == 0)
+                {
+                    pattern = 0b10011001;
+                }
+
+                // second luma (hires) pixel
+                matched = match_color(*color_ptr, *pal_ptr, row);
+                interp0->accum[0] = matched << 5;
+                *pixel_ptr++ = _gtia_color_565(INTERP0_LUMA_SHIFT(4));
+
+                // third luma (hires) pixel
+                *pixel_ptr++ = _gtia_color_565(INTERP0_LUMA_SHIFT(8));
+
+                // move to next chroma pixel
+                color_ptr++;
+                pal_ptr++;
+                // forth luma (hires) pixel
+                matched = match_color(*color_ptr, *pal_ptr, row);
+                interp0->accum[0] = matched << 5;
+                *pixel_ptr++ = _gtia_color_565(INTERP0_LUMA_SHIFT(12));
+            }
+        }
+#ifdef DUMP_PIXEL_FEATURE_ENABLED
+    }
+    if (pxl_dump_pos_x != 0 && pxl_dump_pos_y != 0)
+    {
+        plotf(pxl_dump_pos_x, pxl_dump_pos_y, RED);
+    }
+#endif
+}
+
+static inline void _draw_luma_only_row(uint16_t row)
+{
+    uint16_t x = SCREEN_OFFSET_X;
+    uint16_t y = row - FIRST_GTIA_ROW_TO_SHOW + SCREEN_OFFSET_Y;
+    for (uint16_t i = LUMA_START_OFFSET; i < (LUMA_LINE_LENGTH_BYTES / 2); i++)
+    {
+        uint16_t c = luma_buf[i];
+        uint8_t pxl = c & 0xf;
+        plot(x++, y, colors[pxl]);
+        pxl = (c >> 4) & 0xf;
+        plot(x++, y, colors[pxl]);
+        pxl = (c >> 8) & 0xf;
+        plot(x++, y, colors[pxl]);
+        pxl = (c >> 12) & 0xf;
+        plot(x++, y, colors[pxl]);
+    }
+}
+
+void static __attribute__((noinline)) __not_in_flash_func(_handle_buttons)()
+{
+    enum BtnEvent btn = btn_last_event();
+    if (btn == BTN_A_SHORT && preset_loaded)
+    {
+        app_cfg.enableChroma = !app_cfg.enableChroma;
+    }
+    if (btn == BTN_B_SHORT)
+    {
+    }
+}
+
+void static __attribute__((noinline)) __not_in_flash_func(_handle_uart_rx)()
+{
+    buf[0] = 0;
+    char c = get_char();
+    if (c != 0)
+    {
+        switch (c)
+        {
+        case 'z':
+            delays[0] = (delays[0] - 1) % 64;
+            sprintf(buf, "%d %d", delays[0], delays[1]);
+            break;
+        case 'x':
+            delays[0] = (delays[0] + 1) % 64;
+            sprintf(buf, "%d %d", delays[0], delays[1]);
+            break;
+        case 'c':
+            delays[1] = (delays[1] - 1) % 64;
+            sprintf(buf, "%d %d", delays[0], delays[1]);
+            break;
+        case 'v':
+            delays[1] = (delays[1] + 1) % 64;
+            sprintf(buf, "%d %d", delays[0], delays[1]);
+            break;
+#ifdef DUMP_PIXEL_FEATURE_ENABLED
+        case '8':
+            pxl_dump_pos_y = (pxl_dump_pos_y - 1) % 288;
+            break;
+        case '2':
+            pxl_dump_pos_y = (pxl_dump_pos_y + 1) % 288;
+            break;
+        case '4':
+            pxl_dump_pos_x = (pxl_dump_pos_x - 1) % 360;
+            break;
+        case '6':
+            pxl_dump_pos_x = (pxl_dump_pos_x + 1) % 360;
+            break;
+        case '5':
+            cmd = 'Q';
+            break;
+#endif
+        default:
+            sprintf(buf, "chr: %d", c);
+        }
+        if (buf[0] != 0)
+            uart_log_putln(buf);
+    }
+}
+
+/*
+    The main function handling the decoding of incoming data from GTIA and updating the frame buffer for DVI.
+    It is highly critical in terms of execution time
+*/
+void __scratch_y("process_video_stream") process_video_stream()
+{
+    _setup_gtia_interface();
+    gtia_color_trans_table_init();
+
+    interp_config cfg0 = interp_default_config();
+    interp_config cfg1 = interp_default_config();
+    interp_set_config(interp0, 0, &cfg0);
+    interp_config_set_mask(&cfg1, 1, 4);
+    interp_set_config(interp0, 1, &cfg1);
+    interp0->base[2] = &gtia_palette;
+
+    uint16_t row = 0;
+    while (true)
+    {
+        if (row == 1)
+        {
+            _handle_buttons();
+        }
+
+        uart_log_flush();
+        _wait_and_restart_dma(row);
+
+        if (row == 2)
+        {
+            _handle_uart_rx();
+        }
+
+        // swap buffers
+        buf_seq = (buf_seq + 1) % 2;
+
+        // pio returns line as negative number so we must correct this
+        row = -luma_buf[0];
+        if (row == 10)
+        {
+            // increase frame counter once per frame
+            frame++;
+        }
+        if (row < FIRST_GTIA_ROW_TO_SHOW || row >= FIRST_GTIA_ROW_TO_SHOW + GTIA_ROWS_TO_SHOW)
+        {
+            // skip rows outside view port
+            continue;
+        }
+        if (app_cfg.enableChroma)
+            _draw_luma_and_chroma_row(row);
+        else
+            _draw_luma_only_row(row);
+    }
+}
+
+static __attribute__((noinline)) void __not_in_flash_func(calibrate_luma)(bool (*handler)())
+{
+    _setup_gtia_interface();
+    uint16_t row;
+    bool notFinished = true;
+    while (notFinished)
+    {
+        _wait_and_restart_dma(row);
+        row = -luma_buf[0];
+
+        if (row == 10)
+        {
+            notFinished = handler();
+        }
+
+        if (row < 60 || row > 159)
+        {
+            continue;
+        }
+
+        uint16_t x = 0;
+        uint16_t y = row - 60 + 140;
+        for (uint8_t i = 8; i < (LUMA_LINE_LENGTH_BYTES / 2); i++)
+        {
+            uint16_t c = luma_buf[i];
+            uint8_t pxl = c & 0xf;
+            plot(x++, y, colors[pxl]);
+            pxl = (c >> 4) & 0xf;
+            plot(x++, y, colors[pxl]);
+            pxl = (c >> 8) & 0xf;
+            plot(x++, y, colors[pxl]);
+            pxl = (c >> 12) & 0xf;
+            plot(x++, y, colors[pxl]);
+        }
+    }
+}
+
+void __attribute__((noinline)) __scratch_y("calibrate_chroma") calibrate_chroma()
+{
+    UART_LOG_PUTLN("chroma calibration");
+    _setup_gtia_interface();
+    uint16_t row = -1;
+
+    calib_init();
+
+    while (true)
+    {
+        UART_LOG_FLUSH();
+
+        _wait_and_restart_dma(row);
+
+        // swap buffers
+        buf_seq = (buf_seq + 1) % 2;
+
+        // pio returns line as negative number so change sign
+        row = -luma_buf[0];
+
+        if (row == 4)
+        {
+            // increase frame counter once per frame
+            frame++;
+        }
+
+        if (row < FIRST_GTIA_ROW_TO_SHOW || row >= FIRST_GTIA_ROW_TO_SHOW + GTIA_ROWS_TO_SHOW)
+        {
+            // if (calib_finished == false)
+            calib_handle(row);
+        }
+        else
+        {
+            calib_redraw(row, buf_seq);
+        }
+    }
+}
+
+/*
+
+
+
+static void inline __scratch_y("_draw_chroma_row") _draw_chroma_row(uint16_t row)
+{
+    uint32_t y = row - FIRST_GTIA_ROW_TO_SHOW + SCREEN_OFFSET_Y;
+    for (uint32_t i = 0; i < CHROMA_SAMPLES; i++)
+    {
+        int8_t matched = match_color(color_buf[buf_seq][i], pal_buf[buf_seq][i], row);
+        plotf(i, y, gtia_palette[matched * 16 + 7]);
+    }
+}
+
+
+#define MIN_COLOR 10
 static inline void _draw_positioning(uint16_t row)
 {
     static inline uint32_t sums[2];
@@ -221,409 +642,6 @@ static inline void _draw_luma_mixed_with_chroma_row(uint16_t row)
     }
 }
 
-#ifdef DUMP_PIXEL_FEATURE_ENABLED
-uint16_t pointer_x = 0, pointer_y = 0;
-char cmd = 0;
-
-static void __attribute__((noinline)) __scratch_y("dump_pointer_data") dump_pointer_data(uint16_t row)
-{
-    uint32_t y = row - FIRST_GTIA_ROW_TO_SHOW + SCREEN_OFFSET_Y;
-    uint16_t *pixel_ptr = framebuf + y * FRAME_WIDTH + SCREEN_OFFSET_X;
-
-    uint16_t *pixel_catch_ptr = pixel_ptr + pointer_x - LUMA_START_OFFSET - 2;
-
-    uint32_t *color_ptr = color_buf[buf_seq];
-    uint32_t *pal_ptr = pal_buf[buf_seq];
-
-    color_ptr += 27;
-    pal_ptr += 27;
-
-    for (uint32_t i = LUMA_START_OFFSET; i < (LUMA_LINE_LENGTH_BYTES / 2) - 2; i++)
-    {
-        uint32_t c = luma_buf[i];
-        uint32_t luma = c & 0xf;
-        uint16_t col565 = BLACK; // matched != -1 ? gtia_palette[matched * 16 + luma] : INVALID_CHROMA_HANDLER;
-        if (pixel_ptr == pixel_catch_ptr)
-        {
-            sprintf(buf, "0 pos: %03d,%03d lu: %02d i: %03d co: %08x pa: %08x ne: %08x -> %d/%d",
-                    pointer_x, pointer_y, luma, pal_ptr - pal_buf[buf_seq], *color_ptr, *pal_ptr, *(color_ptr + 1), match_color(*color_ptr, *pal_ptr, row), match_color(*(color_ptr + 1), *(pal_ptr + 1), row));
-            *pixel_ptr++ = WHITE;
-        }
-        else
-            *pixel_ptr++ = col565;
-
-        luma = (c >> 4) & 0xf;
-        color_ptr++;
-        pal_ptr++;
-
-        // matched = match_color(*color_ptr, *pal_ptr, row);
-
-        col565 = BLACK; // matched != -1 ? gtia_palette[matched * 16 + luma] : INVALID_CHROMA_HANDLER;
-        if (pixel_ptr == pixel_catch_ptr)
-        {
-            sprintf(buf, "1 pos: %03d,%03d lu: %02d i: %03d co: %08x pa: %08x ne: %08x -> %d/%d",
-                    pointer_x, pointer_y, luma, pal_ptr - pal_buf[buf_seq], *color_ptr, *pal_ptr, *(color_ptr + 1), match_color(*color_ptr, *pal_ptr, row), match_color(*(color_ptr + 1), *(pal_ptr + 1), row));
-            *pixel_ptr++ = WHITE;
-        }
-        else
-            *pixel_ptr++ = col565;
-
-        luma = (c >> 8) & 0xf;
-        col565 = BLACK; // matched != -1 ? gtia_palette[matched * 16 + luma] : INVALID_CHROMA_HANDLER;
-        if (pixel_ptr == pixel_catch_ptr)
-        {
-            sprintf(buf, "2 pos: %03d,%03d lu: %02d i: %03d co: %08x pa: %08x ne: %08x -> %d/%d",
-                    pointer_x, pointer_y, luma, pal_ptr - pal_buf[buf_seq], *color_ptr, *pal_ptr, *(color_ptr + 1), match_color(*color_ptr, *pal_ptr, row), match_color(*(color_ptr + 1), *(pal_ptr + 1), row));
-            *pixel_ptr++ = WHITE;
-        }
-        else
-            *pixel_ptr++ = col565;
-
-        luma = (c >> 12) & 0xf;
-        color_ptr += ((i) & 0x1) + 1;
-        pal_ptr += ((i) & 0x1) + 1;
-
-        // matched = match_color(*color_ptr, *pal_ptr, row);
-
-        col565 = BLACK; // matched != -1 ? gtia_palette[matched * 16 + luma] : INVALID_CHROMA_HANDLER;
-        if (pixel_ptr == pixel_catch_ptr)
-        {
-            sprintf(buf, "3 pos: %03d,%03d lu: %02d i: %03d co: %08x pa: %08x ne: %08x -> %d/%d",
-                    pointer_x, pointer_y, luma, pal_ptr - pal_buf[buf_seq], *color_ptr, *pal_ptr, *(color_ptr + 1), match_color(*color_ptr, *pal_ptr, row), match_color(*(color_ptr + 1), *(pal_ptr + 1), row));
-            *pixel_ptr++ = WHITE;
-        }
-        else
-            *pixel_ptr++ = col565;
-    }
-    uart_log_putln(buf);
-    cmd = 0;
-}
-#endif
-
-#define INTERP0_LUMA_SHIFT(x) (0x00001020+(x))
-
-static inline uint16_t gtia_color_565(uint32_t luma_shift)
-{
-    interp0->ctrl[1] = luma_shift; 
-    uint16_t *color_location = interp0->peek[2];
-    return *color_location;
-}
-
-
-static void inline __scratch_y("_draw_chroma_row") _draw_chroma_row(uint16_t row)
-{
-
-    uint32_t y = row - FIRST_GTIA_ROW_TO_SHOW + SCREEN_OFFSET_Y;
-    for (uint32_t i = 0; i < CHROMA_SAMPLES; i++)
-    {
-        int8_t matched = match_color(color_buf[buf_seq][i], pal_buf[buf_seq][i], row);
-        plotf(i, y, gtia_palette[matched * 16 + 7]);
-    }
-}
-
-
-static void inline __scratch_y("_draw_luma_and_chroma_row") _draw_luma_and_chroma_row(uint16_t row)
-{
-
-    uint32_t y = row - FIRST_GTIA_ROW_TO_SHOW + SCREEN_OFFSET_Y;
-
-    if (y == scanline || y + 1 == scanline)
-    {
-        // don't modify line which is currently transferred to TDMS pipeline
-        return;
-    }
-
-    uint8_t matched = 0;
-    interp0->accum[0] = 0;
-    uint16_t *pixel_ptr = framebuf + y * FRAME_WIDTH + SCREEN_OFFSET_X;
-    uint32_t *color_ptr = color_buf[buf_seq];
-    uint32_t *pal_ptr = pal_buf[buf_seq];
-
-    color_ptr += 27;
-    pal_ptr += 27;
-
-    uint32_t pattern = 0b10011001;
-
-#ifdef DUMP_PIXEL_FEATURE_ENABLED
-    if (cmd && y == pointer_y)
-    {
-        dump_pointer_data(row);
-    }
-    else
-    {
-#endif
-        if (!btn_is_down(BTN_B))
-        {
-            for (uint32_t i = LUMA_START_OFFSET; i < (LUMA_LINE_LENGTH_BYTES / 2)-2; i++)
-            {
-                uint32_t luma_4px = luma_buf[i];
-                interp0->accum[1] = luma_4px << 1;
-
-                *pixel_ptr++ = gtia_color_565(INTERP0_LUMA_SHIFT(0));
-
-                if (pattern & 1)
-                {
-                    color_ptr++;
-                    pal_ptr++;
-                }
-                else
-                {
-                    color_ptr += 2;
-                    pal_ptr += 2;
-                }
-                pattern = pattern >> 1;
-                if (pattern == 0)
-                {
-                    pattern = 0b10011001;
-                }
-
-                matched = match_color(*color_ptr, *pal_ptr, row);
-                interp0->accum[0] = matched * 32;
-                *pixel_ptr++ = gtia_color_565(INTERP0_LUMA_SHIFT(4));
-
-                *pixel_ptr++ = gtia_color_565(INTERP0_LUMA_SHIFT(8));
-
-                color_ptr += 1;
-                pal_ptr += 1;
-                matched = match_color(*color_ptr, *pal_ptr, row);
-                interp0->accum[0] = matched * 32;
-                *pixel_ptr++ = gtia_color_565(INTERP0_LUMA_SHIFT(12));
-            }
-        }
-#ifdef DUMP_PIXEL_FEATURE_ENABLED
-    }
-    if (pointer_x != 0 && pointer_y != 0)
-    {
-        plotf(pointer_x, pointer_y, RED);
-    }
-#endif
-}
-
-static inline void _draw_luma_only_row(uint16_t row)
-{
-    uint16_t x = SCREEN_OFFSET_X;
-    uint16_t y = row - FIRST_GTIA_ROW_TO_SHOW + SCREEN_OFFSET_Y;
-    for (uint16_t i = LUMA_START_OFFSET; i < (LUMA_LINE_LENGTH_BYTES / 2); i++)
-    {
-        uint16_t c = luma_buf[i];
-        uint8_t pxl = c & 0xf;
-        plot(x++, y, colors[pxl]);
-        pxl = (c >> 4) & 0xf;
-        plot(x++, y, colors[pxl]);
-        pxl = (c >> 8) & 0xf;
-        plot(x++, y, colors[pxl]);
-        pxl = (c >> 12) & 0xf;
-        plot(x++, y, colors[pxl]);
-    }
-}
-
-void static handleButtons()
-{
-    enum BtnEvent btn = btn_last_event();
-    if (btn == BTN_A_SHORT && preset_loaded)
-    {
-        mode = (mode + 1) % 2;
-        if (mode == 0)
-        {
-            app_cfg.enableChroma = true; //! app_cfg.enableChroma;
-        }
-        if (mode == 1)
-        {
-            app_cfg.enableChroma = false; //! app_cfg.enableChroma;
-        }
-        sprintf(buf, "m: %d", mode);
-        UART_LOG_PUTLN(buf);
-    }
-    if (btn == BTN_B_SHORT)
-    {
-    }
-}
-
-void __attribute__((noinline)) __not_in_flash_func(handle_uart_rx)()
-{
-    buf[0] = 0;
-    char c = get_char();
-    if (c != 0)
-    {
-        switch (c)
-        {
-        case 'z':
-            delays[0] = (delays[0] - 1) % 64;
-            sprintf(buf, "%d %d", delays[0], delays[1]);
-            break;
-        case 'x':
-            delays[0] = (delays[0] + 1) % 64;
-            sprintf(buf, "%d %d", delays[0], delays[1]);
-            break;
-        case 'c':
-            delays[1] = (delays[1] - 1) % 64;
-            sprintf(buf, "%d %d", delays[0], delays[1]);
-            break;
-        case 'v':
-            delays[1] = (delays[1] + 1) % 64;
-            sprintf(buf, "%d %d", delays[0], delays[1]);
-            break;
-#ifdef DUMP_PIXEL_FEATURE_ENABLED
-        case '8':
-            pointer_y = (pointer_y - 1) % 288;
-            break;
-        case '2':
-            pointer_y = (pointer_y + 1) % 288;
-            break;
-        case '4':
-            pointer_x = (pointer_x - 1) % 360;
-            break;
-        case '6':
-            pointer_x = (pointer_x + 1) % 360;
-            break;
-        case '5':
-            cmd = 'Q';
-            break;
-#endif
-        default:
-            sprintf(buf, "chr: %d", c);
-        }
-        if (buf[0] != 0)
-            uart_log_putln(buf);
-    }
-}
-
-void __not_in_flash_func(process_video_stream)()
-{
-    _setup_gtia_interface();
-    gtia_color_trans_table_init();
-
-    interp_config cfg0 = interp_default_config();
-    interp_config cfg1 = interp_default_config();
-    interp_set_config(interp0, 0, &cfg0);
-    interp_config_set_mask(&cfg1, 1, 4);
-    interp_set_config(interp0, 1, &cfg1);
-    interp0->base[2] = &gtia_palette;
-
-    uint16_t row = 0;
-    while (true)
-    {
-        if (row == 1)
-        {
-            handleButtons();
-        }
-
-        uart_log_flush();
-        _wait_and_restart_dma(row);
-        if (row == 2)
-        {
-            handle_uart_rx();
-        }
-
-        // swap buffer
-        buf_seq = (buf_seq + 1) % 2;
-
-        // pio returns line as negative number so we must correct this
-        row = -luma_buf[0];
-        if (row == 10)
-        {
-            // increase frame counter once per frame
-            frame++;
-        }
-        if (row < FIRST_GTIA_ROW_TO_SHOW || row >= FIRST_GTIA_ROW_TO_SHOW + GTIA_ROWS_TO_SHOW)
-        {
-            // skip rows outside view port
-            continue;
-        }
-        if (app_cfg.enableChroma)
-        {
-            _draw_luma_and_chroma_row(row);
-        }
-        else
-        {
-            _draw_chroma_row(row);
-            //_delays_calibration(row);
-            // _draw_luma_mixed_with_chroma_row(row);
-            //  _draw_luma_only_row(row);
-        }
-    }
-}
-
-static __attribute__((noinline)) void __not_in_flash_func(calibrate_luma)(bool (*handler)())
-{
-    _setup_gtia_interface();
-    uint16_t row;
-    bool notFinished = true;
-    while (notFinished)
-    {
-        _wait_and_restart_dma(row);
-        row = -luma_buf[0];
-
-        if (row == 10)
-        {
-            notFinished = handler();
-        }
-
-        if (row < 60 || row > 159)
-        {
-            continue;
-        }
-
-        uint16_t x = 0;
-        uint16_t y = row - 60 + 140;
-        for (uint8_t i = 8; i < (LUMA_LINE_LENGTH_BYTES / 2); i++)
-        {
-            uint16_t c = luma_buf[i];
-            uint8_t pxl = c & 0xf;
-            plot(x++, y, colors[pxl]);
-            pxl = (c >> 4) & 0xf;
-            plot(x++, y, colors[pxl]);
-            pxl = (c >> 8) & 0xf;
-            plot(x++, y, colors[pxl]);
-            pxl = (c >> 12) & 0xf;
-            plot(x++, y, colors[pxl]);
-        }
-    }
-}
-
-void __attribute__((noinline)) __scratch_y("calibrate_chroma") calibrate_chroma()
-{
-    UART_LOG_PUTLN("chromas calibration");
-    _setup_gtia_interface();
-    //   uint burst;
-    uint16_t row = -1;
-
-    calib_init();
-
-    while (true)
-    {
-
-        // if (row == 4)
-        // {
-        //     handleButtons();
-        // }
-        UART_LOG_FLUSH();
-
-        _wait_and_restart_dma(row);
-
-        // swap buffer
-        buf_seq = (buf_seq + 1) % 2;
-
-        // pio returns line as negative number so change sign
-        row = -luma_buf[0];
-
-        if (row == 4)
-        {
-            // increase frame counter once per frame
-            frame++;
-        }
-
-        if (row < FIRST_GTIA_ROW_TO_SHOW || row >= FIRST_GTIA_ROW_TO_SHOW + GTIA_ROWS_TO_SHOW)
-        {
-            // if (calib_finished == false)
-            calib_handle(row);
-        }
-        else
-        {
-            calib_redraw(row, buf_seq);
-        }
-    }
-}
 
 // useful for debug problems
 void __not_in_flash("draw_line_number_histogram") draw_line_number_histogram()
@@ -646,5 +664,6 @@ void __not_in_flash("draw_line_number_histogram") draw_line_number_histogram()
         }
     }
 }
+*/
 
 #endif

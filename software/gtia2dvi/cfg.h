@@ -16,7 +16,7 @@
 
 #define FORCE_MENU false
 #define LOG_ENABLED
-//#define DUMP_PIXEL_FEATURE_ENABLED
+#define DUMP_PIXEL_FEATURE_ENABLED
 
 
 struct AppConfig
@@ -27,18 +27,17 @@ struct AppConfig
 
 struct AppConfig app_cfg __attribute__((section(".uninitialized_data")));
 
-
+// chroma calibration definition
 #define SAMPLING_FRAMES     12
 #define SAMPLE_Y_FIRST      70
 #define SAMPLE_Y_LAST       155
 #define SAMPLE_X_FIRST      39
 #define SAMPLE_X_SIZE       9
 #define COUNTS              226
-//#define COUNTS              1
-
 #define MIN_CALIB_COUNT     0
 #define MAX_SAMPLE          0x3ff
 
+// chroma calibration data
 int8_t chroma_table[(MAX_SAMPLE+1)][2] __attribute__((section(".uninitialized_data")));
 
 // delays for aligning color data for even and odd lines

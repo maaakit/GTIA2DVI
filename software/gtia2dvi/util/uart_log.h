@@ -1,13 +1,10 @@
-#include "uart_8n1_tx.pio.h"
 
 #ifndef UART_LOG_H
 #define UART_LOG_H
 
 #define UART_LOG_BUF_SIZE 128
-// #define UART_LOG_PIO pio0
-// #define UART_LOG_SM 3
 #define UART_LOG_SERIAL_BAUD 115200
-// #define UART_LOG_TX_PIN 8
+
 #define UART_RX_PIN 9
 #define UART_TX_PIN 8
 #define UART_ID uart1
@@ -23,8 +20,9 @@
 static char uart_8n1_buffer[UART_LOG_BUF_SIZE];
 
 static uint16_t uart_8n1_index_end = 0;
-
 static uint16_t uart_8n1_index_cur = 0;
+
+char buf[128];
 
 static inline void uart_log_init()
 {
@@ -47,7 +45,6 @@ static inline char __not_in_flash_func(get_char)()
     return 0;
 }
 
-// TODO: non blocking DMA here !
 static inline void __not_in_flash_func(uart_log_flush)()
 {
 

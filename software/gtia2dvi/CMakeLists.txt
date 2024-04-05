@@ -24,6 +24,3 @@ target_link_libraries(gtia2dvi
 pico_add_extra_outputs(gtia2dvi)
 
 # pico_set_binary_type(gtia2dvi no_flash)
-
-
-

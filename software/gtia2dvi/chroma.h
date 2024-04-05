@@ -126,13 +126,12 @@ static void inline next_sample2()
 
     if (current_sample > MAX_SAMPLE)
     {
-        //  calib_finished = true;
         UART_LOG_PUTLN("calibration finished");
         UART_LOG_PUTLN("saving preset");
         app_cfg.enableChroma = true;
         set_post_boot_action(WRITE_CONFIG);
         set_post_boot_action(WRITE_PRESET);
-        watchdog_enable(1, 1);
+        watchdog_enable(500, 1);
         while (true)
         {
             UART_LOG_FLUSH();
@@ -142,7 +141,6 @@ static void inline next_sample2()
 
 static void inline calib_handle(int row)
 {
-    char buf[32];
     if (row == 5)
     {
         sample_frame++;

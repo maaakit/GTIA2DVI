@@ -7,6 +7,7 @@
 #include "hardware/pio.h"
 
 #include "chroma_calib.h"
+#include "color_burst.h"
 
 #ifndef VIDEO_CHANNEL_H
 #define VIDEO_CHANNEL_H
@@ -23,17 +24,13 @@
 #define LUMA_START_OFFSET 12
 #define LUMA_WORDS_TO_SKIP 2
 
-
 #define INTERP0_LUMA_SHIFT(x) (0x00001020 + (x))
-
 
 static inline void calibrate_luma();
 
 void __attribute__((noinline)) __not_in_flash_func(calibrate_chroma)();
 
-
 uint16_t __scratch_x("luma_buf") luma_buf[LUMA_LINE_LENGTH_BYTES / 2];
-
 
 /*
     this function waits until the data transfer of the line is completed and then initiates the transfer of the next one.
@@ -103,7 +100,7 @@ static inline void __not_in_flash_func(_setup_gtia_interface)()
 }
 
 /*
-  calculates RGB565 value of GTIA color based on luma and color values with interpolator 
+  calculates RGB565 value of GTIA color based on luma and color values with interpolator
 */
 static inline uint16_t _gtia_color_565(uint32_t luma_shift)
 {
@@ -115,8 +112,6 @@ static inline uint16_t _gtia_color_565(uint32_t luma_shift)
     return *color_location;
 }
 
-
-
 #ifdef DUMP_PIXEL_FEATURE_ENABLED
 uint16_t pxl_dump_pos_x = 0, pxl_dump_pos_y = 0;
 char cmd = 0;
@@ -125,7 +120,6 @@ char cmd = 0;
     if (pixel_ptr == pixel_catch_ptr)                                                     \
     sprintf(buf, "%1d pos: %03d,%03d lu: %02d i: %03d pa: %08x co: %08x / %08x -> %d/%d", \
             (X) / 4, pxl_dump_pos_x, pxl_dump_pos_y, _get_current_luma(INTERP0_LUMA_SHIFT(X)), pal_ptr - pal_buf[buf_seq], *pal_ptr, *color_ptr, *(color_ptr + 1), match_color(*color_ptr, *pal_ptr, row), match_color(*(color_ptr + 1), *(pal_ptr + 1), row))
-
 
 /*
     gets current pixel luma value from interpolator
@@ -147,7 +141,7 @@ static inline uint16_t _get_current_luma(uint32_t luma_shift)
     2 for down
     5 triggers data to be writen to UART
 */
-static void  __not_in_flash_func(_locate_and_dump_pixel_data)(uint16_t row)
+static void __not_in_flash_func(_locate_and_dump_pixel_data)(uint16_t row)
 {
     uint32_t y = row - FIRST_GTIA_ROW_TO_SHOW + SCREEN_OFFSET_Y;
     uint16_t *pixel_ptr = framebuf + y * FRAME_WIDTH + SCREEN_OFFSET_X;
@@ -388,6 +382,7 @@ void __scratch_y("process_video_stream") process_video_stream()
     uint16_t row = 0;
     while (true)
     {
+
         if (row == 1)
         {
             _handle_buttons();
@@ -400,13 +395,18 @@ void __scratch_y("process_video_stream") process_video_stream()
         {
             _handle_uart_rx();
         }
+        // pio returns line as negative number so we must correct this
+        row = -luma_buf[0];
 
         // swap buffers
         buf_seq = (buf_seq + 1) % 2;
 
-        // pio returns line as negative number so we must correct this
-        row = -luma_buf[0];
-        if (row == 10)
+        if (row == 5 || row ==6 ) 
+        {
+            color_burst_process(row);
+        }
+
+        if (row == 5)
         {
             // increase frame counter once per frame
             frame++;

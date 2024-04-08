@@ -11,7 +11,7 @@
 
 #define CHROMA_SAMPLES 250
 
-uint16_t __scratch_x("counts") counts[COUNTS][2];
+uint16_t __not_in_flash("counts") counts[COUNTS][2];
 uint16_t current_sample = 0;
 uint32_t sample_frame = 0;
 bool processing = false;
@@ -241,12 +241,12 @@ static inline __force_inline uint32_t popcount3(uint32_t x) // 0x84
 
 //__attribute__((noinline))
 
-static int8_t inline __inline __scratch_y("popcount") popcount(uint32_t data)
+static int8_t inline __inline popcount(uint32_t data)
 {
     return POPCNT(data);
 }
 
-static const uint16_t inline __inline __scratch_y("zz") decode(uint32_t color, uint32_t pal)
+static const uint16_t inline decode(uint32_t color, uint32_t pal)
 {
     uint32_t v1 = color & (~pal);
     uint32_t v2 = (~color) & pal;
@@ -257,13 +257,13 @@ static const uint16_t inline __inline __scratch_y("zz") decode(uint32_t color, u
     return vv1 << 5 | vv2;
 }
 
-static inline __inline __scratch_y("match_color") uint8_t match_color(uint32_t color, uint32_t pal, int row)
+static inline __inline uint8_t match_color(uint32_t color, uint32_t pal, int row)
 {
     uint16_t sample = decode(color, pal);
-    return  chroma_table[sample][row%2];
+    return chroma_table[sample][row % 2];
 }
 
-static uint16_t inline __inline __scratch_y("decode_color") decode_color(int x, int buf_seq)
+static uint16_t inline decode_color(int x, int buf_seq)
 {
     uint32_t color = color_buf[buf_seq][x];
     uint32_t pal = pal_buf[buf_seq][x];

@@ -28,7 +28,7 @@ static inline uint16_t compute_gtia_palette_color_adr(int sample, int row)
     int8_t col = chroma_table[sample][row];
     if (col < 0 || col > 15)
     {
-        col = 0;
+        col = NOT_MATCHED_COLOR_INDEX;
     }
     return col;
 }

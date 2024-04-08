@@ -18,6 +18,11 @@
 #define LOG_ENABLED
 #define DUMP_PIXEL_FEATURE_ENABLED
 
+// defines how process samples than can't be matched to any calibrated colors 
+// 0 for grayscale
+// 16 for yellow color (good for debuging)
+#define NOT_MATCHED_COLOR_INDEX 16
+
 
 struct AppConfig
 {

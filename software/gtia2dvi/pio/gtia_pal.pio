@@ -8,7 +8,7 @@
 
 .wrap_target
     mov     X OSR                ; X <- number of 1b samples
-    wait    1 irq 6    [15]       ; wait for irq 0 then clear  
+    wait    1 irq 6    [9]       ; wait for irq 0 then clear  
     nop     [0]
 sample_loop:
     in      pins 1               ; 1b sample accquire

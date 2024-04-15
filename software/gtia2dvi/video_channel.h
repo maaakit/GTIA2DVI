@@ -22,9 +22,11 @@
 // row decoding logic configuration
 #define LUMA_LINE_LENGTH_BYTES 202
 #define LUMA_START_OFFSET 12
-#define LUMA_WORDS_TO_SKIP 2
+#define LUMA_WORDS_TO_SKIP (2+12)
 
 #define INTERP0_LUMA_SHIFT(x) (0x00001020 + (x))
+
+#define PTRN 0b1111111011111011
 
 static inline void calibrate_luma();
 
@@ -118,8 +120,10 @@ char cmd = 0;
 
 #define DUMP_PIXEL_DATA_IF_MATCH(X)                                                       \
     if (pixel_ptr == pixel_catch_ptr)                                                     \
-    sprintf(buf, "%1d pos: %03d,%03d lu: %02d i: %03d pa: %08x co: %08x / %08x -> %d/%d", \
-            (X) / 4, pxl_dump_pos_x, pxl_dump_pos_y, _get_current_luma(INTERP0_LUMA_SHIFT(X)), pal_ptr - pal_buf[buf_seq], *pal_ptr, *color_ptr, *(color_ptr + 1), match_color(*color_ptr, *pal_ptr, row), match_color(*(color_ptr + 1), *(pal_ptr + 1), row))
+    sprintf(buf, "%1d pos: %03d,%03d lu: %02d i: %03d pa: %08x co: %08x / %08x -> %d/%d [%d,%d]", \
+            (X) / 4, pxl_dump_pos_x, pxl_dump_pos_y, _get_current_luma(INTERP0_LUMA_SHIFT(X)), pal_ptr - pal_buf[buf_seq], \
+            *pal_ptr, *color_ptr, *(color_ptr + 1), match_color(*color_ptr, *pal_ptr, row), match_color(*(color_ptr + 1), \
+            *(pal_ptr + 1), row ), decode(*color_ptr, *pal_ptr) & 0x1f, (decode(*color_ptr, *pal_ptr) >> 5 ) & 0x1f  )
 
 /*
     gets current pixel luma value from interpolator
@@ -131,6 +135,8 @@ static inline uint16_t _get_current_luma(uint32_t luma_shift)
     // returns luma value for current pixel
     return interp0->peek[1] >> 1;
 }
+
+
 
 /*
     dumps to UART console debug data describing single pixel pointed by user.
@@ -145,15 +151,15 @@ static void __not_in_flash_func(_locate_and_dump_pixel_data)(uint16_t row)
 {
     uint32_t y = row - FIRST_GTIA_ROW_TO_SHOW + SCREEN_OFFSET_Y;
     uint16_t *pixel_ptr = framebuf + y * FRAME_WIDTH + SCREEN_OFFSET_X;
-    uint16_t *pixel_catch_ptr = pixel_ptr + pxl_dump_pos_x - LUMA_START_OFFSET - LUMA_WORDS_TO_SKIP;
+    uint16_t *pixel_catch_ptr = pixel_ptr + pxl_dump_pos_x - LUMA_START_OFFSET;
     uint32_t *color_ptr = color_buf[buf_seq];
     uint32_t *pal_ptr = pal_buf[buf_seq];
 
     color_ptr += 27;
     pal_ptr += 27;
-    uint32_t pattern = 0b10011001;
+    uint32_t pattern = PTRN;
 
-    for (uint32_t i = LUMA_START_OFFSET; i < (LUMA_LINE_LENGTH_BYTES / 2) - 2; i++)
+    for (uint32_t i = LUMA_START_OFFSET; i < (LUMA_LINE_LENGTH_BYTES / 2) - LUMA_WORDS_TO_SKIP; i++)
     {
         uint32_t luma_4px = luma_buf[i];
         interp0->accum[1] = luma_4px << 1;
@@ -173,10 +179,10 @@ static void __not_in_flash_func(_locate_and_dump_pixel_data)(uint16_t row)
             color_ptr += 2;
             pal_ptr += 2;
         }
-        pattern = pattern >> 1;
+        pattern = pattern >> 2;
         if (pattern == 0)
         {
-            pattern = 0b10011001;
+            pattern = PTRN;
         }
 
         // second luma (hires) pixel
@@ -188,8 +194,24 @@ static void __not_in_flash_func(_locate_and_dump_pixel_data)(uint16_t row)
         *pixel_ptr++ = BLACK;
 
         // move to next chroma pixel
-        color_ptr++;
-        pal_ptr++;
+        // color_ptr++;
+        // pal_ptr++;
+        // calculate and move to next chroma pixel
+        if (pattern & 1)
+        {
+            color_ptr++;
+            pal_ptr++;
+        }
+        else
+        {
+            color_ptr += 2;
+            pal_ptr += 2;
+        }
+        pattern = pattern >> 2;
+        if (pattern == 0)
+        {
+            pattern = PTRN;
+        }
 
         // forth luma (hires) pixel
         DUMP_PIXEL_DATA_IF_MATCH(12);
@@ -221,7 +243,7 @@ static void __attribute__((noinline)) __scratch_y("_draw_luma_and_chroma_row") _
 
     color_ptr += 27;
     pal_ptr += 27;
-    uint32_t pattern = 0b10011001;
+    uint32_t pattern = PTRN;
 
 #ifdef DUMP_PIXEL_FEATURE_ENABLED
     if (cmd && y == pxl_dump_pos_y)
@@ -252,10 +274,10 @@ static void __attribute__((noinline)) __scratch_y("_draw_luma_and_chroma_row") _
                     color_ptr += 2;
                     pal_ptr += 2;
                 }
-                pattern = pattern >> 1;
+                pattern = pattern >> 2;
                 if (pattern == 0)
                 {
-                    pattern = 0b10011001;
+                    pattern = PTRN;
                 }
 
                 // second luma (hires) pixel
@@ -267,8 +289,25 @@ static void __attribute__((noinline)) __scratch_y("_draw_luma_and_chroma_row") _
                 *pixel_ptr++ = _gtia_color_565(INTERP0_LUMA_SHIFT(8));
 
                 // move to next chroma pixel
-                color_ptr++;
-                pal_ptr++;
+                // color_ptr++;
+                // pal_ptr++;
+                if (pattern & 1)
+                {
+                    color_ptr++;
+                    pal_ptr++;
+                }
+                else
+                {
+                    color_ptr += 2;
+                    pal_ptr += 2;
+                }
+                pattern = pattern >> 2;
+                if (pattern == 0)
+                {
+                    pattern = PTRN;
+                }
+
+
                 // forth luma (hires) pixel
                 matched = match_color(*color_ptr, *pal_ptr, row);
                 interp0->accum[0] = matched << 5;

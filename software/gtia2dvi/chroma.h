@@ -144,6 +144,26 @@ static void inline next_sample2()
         }
     }
 }
+static bool inline edge_only_pixels(int z)
+{
+    return false;
+    // for (int i = 1; i < COUNTS - 1; i++)
+    // {
+    //     if (counts[i][z] == 0)
+    //     {
+    //         continue;
+    //     }
+    //     else
+    //     {
+    //         if (counts[i - 1][z] == 0 && counts[i + 1][z] == 0)
+    //         {
+    //             continue;
+    //         }
+    //         return false;
+    //     }
+    // }
+    // return true;
+}
 
 static void inline calib_handle(int row)
 {
@@ -162,35 +182,39 @@ static void inline calib_handle(int row)
         if (row == 5 || row == 6)
         {
             uint z = row - 5;
-            uint max_sum = 0;
-            uint max_index = -1;
-            for (uint col = 0; col < 15; col++)
+            if (!edge_only_pixels(z))
             {
-                uint pixel_sum = 0;
-                for (int i = 0; i < SAMPLE_X_SIZE; i++)
+
+                uint max_sum = 0;
+                uint max_index = -1;
+                for (uint col = 0; col < 15; col++)
                 {
-                    pixel_sum += counts[((col * 25) / 2) + SAMPLE_X_FIRST + i][z];
-                }
-                if (pixel_sum > 0)
-                {
-                    if (max_sum < pixel_sum)
+
+                    uint pixel_sum = 0;
+                    for (int i = 0; i < SAMPLE_X_SIZE; i++)
                     {
-                        max_sum = pixel_sum;
-                        max_index = col;
+                        pixel_sum += counts[((col * 25) / 2) + SAMPLE_X_FIRST + i][z];
                     }
-                    sprintf(buf, "%d-%d: %d", col + 1, z, pixel_sum);
-                    UART_LOG_PUTLN(buf);
+                    if (pixel_sum > 0)
+                    {
+                        if (max_sum < pixel_sum)
+                        {
+                            max_sum = pixel_sum;
+                            max_index = col;
+                        }
+                        sprintf(buf, "%d-%d: %d", col + 1, z, pixel_sum);
+                        UART_LOG_PUTLN(buf);
+                    }
+                }
+                if (max_sum > MIN_CALIB_COUNT)
+                {
+                    chroma_table[current_sample][z] = max_index + 1;
+                    uint x = current_sample >> 5;
+                    uint y = current_sample & 0x1f;
+
+                    plotf(280 + x, 40 + y + z * 40, gtia_palette[(max_index + 1) * 16 + 6]);
                 }
             }
-            if (max_sum > MIN_CALIB_COUNT)
-            {
-                chroma_table[current_sample][z] = max_index + 1;
-                uint x = current_sample >> 5;
-                uint y = current_sample & 0x1f;
-
-                plotf(280 + x, 40 + y + z * 40, gtia_palette[(max_index + 1) * 16 + 6]);
-            }
-
             plotf(266 + (current_sample % 4), 266 - (current_sample / 4), WHITE);
         }
         if (row == 7)

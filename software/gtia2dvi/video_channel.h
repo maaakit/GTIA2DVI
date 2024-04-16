@@ -22,12 +22,12 @@
 // row decoding logic configuration
 #define LUMA_LINE_LENGTH_BYTES 202
 #define LUMA_START_OFFSET 12
-#define LUMA_WORDS_TO_SKIP (2+12)
+#define LUMA_WORDS_TO_SKIP (2)
 
 #define INTERP0_LUMA_SHIFT(x) (0x00001020 + (x))
 
-#define PTRN 0b1111111011111011
-
+// #define PTRN 0b1011111110111111
+#define PTRN 0b10111011 
 static inline void calibrate_luma();
 
 void __attribute__((noinline)) __not_in_flash_func(calibrate_chroma)();
@@ -151,7 +151,7 @@ static void __not_in_flash_func(_locate_and_dump_pixel_data)(uint16_t row)
 {
     uint32_t y = row - FIRST_GTIA_ROW_TO_SHOW + SCREEN_OFFSET_Y;
     uint16_t *pixel_ptr = framebuf + y * FRAME_WIDTH + SCREEN_OFFSET_X;
-    uint16_t *pixel_catch_ptr = pixel_ptr + pxl_dump_pos_x - LUMA_START_OFFSET;
+    uint16_t *pixel_catch_ptr = pixel_ptr + pxl_dump_pos_x - LUMA_START_OFFSET - 2;
     uint32_t *color_ptr = color_buf[buf_seq];
     uint32_t *pal_ptr = pal_buf[buf_seq];
 
@@ -169,21 +169,21 @@ static void __not_in_flash_func(_locate_and_dump_pixel_data)(uint16_t row)
         *pixel_ptr++ = BLACK;
 
         // calculate and move to next chroma pixel
-        if (pattern & 1)
-        {
+        // if (pattern & 1)
+        // {
             color_ptr++;
             pal_ptr++;
-        }
-        else
-        {
-            color_ptr += 2;
-            pal_ptr += 2;
-        }
-        pattern = pattern >> 2;
-        if (pattern == 0)
-        {
-            pattern = PTRN;
-        }
+        // }
+        // else
+        // {
+        //     color_ptr += 2;
+        //     pal_ptr += 2;
+        // }
+        // pattern = pattern >> 2;
+        // if (pattern == 0)
+        // {
+        //     pattern = PTRN;
+        // }
 
         // second luma (hires) pixel
         DUMP_PIXEL_DATA_IF_MATCH(4);
@@ -264,21 +264,21 @@ static void __attribute__((noinline)) __scratch_y("_draw_luma_and_chroma_row") _
                 *pixel_ptr++ = _gtia_color_565(INTERP0_LUMA_SHIFT(0));
 
                 // calculate and move to next chroma pixel
-                if (pattern & 1)
-                {
+                // if (pattern & 1)
+                // {
                     color_ptr++;
                     pal_ptr++;
-                }
-                else
-                {
-                    color_ptr += 2;
-                    pal_ptr += 2;
-                }
-                pattern = pattern >> 2;
-                if (pattern == 0)
-                {
-                    pattern = PTRN;
-                }
+                // }
+                // else
+                // {
+                //     color_ptr += 2;
+                //     pal_ptr += 2;
+                // }
+                // pattern = pattern >> 2;
+                // if (pattern == 0)
+                // {
+                //     pattern = PTRN;
+                // }
 
                 // second luma (hires) pixel
                 matched = match_color(*color_ptr, *pal_ptr, row);

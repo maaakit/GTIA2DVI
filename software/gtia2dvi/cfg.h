@@ -10,7 +10,7 @@
 #define SCREEN_OFFSET_Y 0
 #define SCREEN_OFFSET_X 14
 
-#define VREG_VSEL VREG_VOLTAGE_1_30
+#define VREG_VSEL VREG_VOLTAGE_1_25
 
 #define LED_PIN 25
 
@@ -21,7 +21,7 @@
 // defines how process samples than can't be matched to any calibrated colors 
 // 0 for grayscale
 // 16 for yellow color (good for debuging)
-#define NOT_MATCHED_COLOR_INDEX 16
+#define NOT_MATCHED_COLOR_INDEX 0
 
 
 struct AppConfig
@@ -33,7 +33,7 @@ struct AppConfig
 struct AppConfig app_cfg __attribute__((section(".uninitialized_data")));
 
 // chroma calibration definition
-#define SAMPLING_FRAMES     12
+#define SAMPLING_FRAMES     30
 #define SAMPLE_Y_FIRST      70
 #define SAMPLE_Y_LAST       155
 #define SAMPLE_X_FIRST      39

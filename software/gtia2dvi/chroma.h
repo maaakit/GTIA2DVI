@@ -10,7 +10,7 @@
 #ifndef CHROMA_H
 #define CHROMA_H
 
-#define CHROMA_SAMPLES 250
+#define CHROMA_SAMPLES 202
 
 #define POPCNT popcount3
 
@@ -71,15 +71,15 @@ static void inline calib_count(int row, int pos)
 
 static void inline calib_redraw(int row, int buf_seq)
 {
-    if (row == 60)
+    if (row == SAMPLE_Y_FIRST - 4)
     {
         for (int c = 0; c < 15; c++)
         {
             for (int i = 0; i < SAMPLE_X_SIZE; i++)
-                plotf(SAMPLE_X_FIRST + ((c * 25) / 2) + i, row - FIRST_GTIA_ROW_TO_SHOW, gtia_palette[(c + 1) * 16 + 8]);
+                plotf(SAMPLE_X_FIRST + (c * 10) + i, row - FIRST_GTIA_ROW_TO_SHOW, gtia_palette[(c + 1) * 16 + 8]);
         }
     }
-    else if (row >= 59 && row <= 62)
+    else if (row >= SAMPLE_Y_FIRST - 10 && row <= SAMPLE_Y_FIRST - 2)
     {
         for (uint x = 36; x < CHROMA_SAMPLES - 24; x++)
         {
@@ -90,15 +90,9 @@ static void inline calib_redraw(int row, int buf_seq)
     else
     {
         if (processing == false)
-            for (uint x = 36; x < CHROMA_SAMPLES - 24; x++)
+            for (uint x = 30; x < CHROMA_SAMPLES - 20; x++)
             {
                 uint matched = decode_color(x, buf_seq);
-
-                // uint color_bits = POPCNT(color_buf[buf_seq][x]);
-                // if (color_bits < 13)
-                // {
-                //     chroma_table[matched][row % 2] = 0;
-                // }
 
                 plotf(x, row - FIRST_GTIA_ROW_TO_SHOW, matched == current_sample ? (row % 2 ? MAGENTA : YELLOW) : matched);
 
@@ -106,8 +100,6 @@ static void inline calib_redraw(int row, int buf_seq)
                     if (matched == current_sample)
                         calib_count(row, x);
             }
-        //     if (row > SAMPLE_Y_FIRST && row < SAMPLE_Y_LAST)
-        //         plotf(30, row - FIRST_GTIA_ROW_TO_SHOW, RED);
     }
 }
 
@@ -144,26 +136,6 @@ static void inline next_sample2()
         }
     }
 }
-static bool inline edge_only_pixels(int z)
-{
-    return false;
-    // for (int i = 1; i < COUNTS - 1; i++)
-    // {
-    //     if (counts[i][z] == 0)
-    //     {
-    //         continue;
-    //     }
-    //     else
-    //     {
-    //         if (counts[i - 1][z] == 0 && counts[i + 1][z] == 0)
-    //         {
-    //             continue;
-    //         }
-    //         return false;
-    //     }
-    // }
-    // return true;
-}
 
 static void inline calib_handle(int row)
 {
@@ -182,39 +154,38 @@ static void inline calib_handle(int row)
         if (row == 5 || row == 6)
         {
             uint z = row - 5;
-            if (!edge_only_pixels(z))
+            uint max_sum = 0;
+            uint max_index = -1;
+            for (uint col = 0; col < 15; col++)
             {
 
-                uint max_sum = 0;
-                uint max_index = -1;
-                for (uint col = 0; col < 15; col++)
+                uint pixel_sum = 0;
+                for (int i = 0; i < SAMPLE_X_SIZE; i++)
                 {
-
-                    uint pixel_sum = 0;
-                    for (int i = 0; i < SAMPLE_X_SIZE; i++)
-                    {
-                        pixel_sum += counts[((col * 25) / 2) + SAMPLE_X_FIRST + i][z];
-                    }
-                    if (pixel_sum > 0)
-                    {
-                        if (max_sum < pixel_sum)
-                        {
-                            max_sum = pixel_sum;
-                            max_index = col;
-                        }
-                        sprintf(buf, "%d-%d: %d", col + 1, z, pixel_sum);
-                        UART_LOG_PUTLN(buf);
-                    }
+                    pixel_sum += counts[(col * 10) + SAMPLE_X_FIRST + i][z];
                 }
-                if (max_sum > MIN_CALIB_COUNT)
+                if (pixel_sum > 0)
                 {
-                    chroma_table[current_sample][z] = max_index + 1;
-                    uint x = current_sample >> 5;
-                    uint y = current_sample & 0x1f;
-
-                    plotf(280 + x, 40 + y + z * 40, gtia_palette[(max_index + 1) * 16 + 6]);
+                    if (max_sum < pixel_sum)
+                    {
+                        max_sum = pixel_sum;
+                        max_index = col;
+                    }
+                    sprintf(buf, "%d-%d: %d", col + 1, z, pixel_sum);
+                    UART_LOG_PUTLN(buf);
                 }
             }
+            if (max_sum > MIN_CALIB_COUNT)
+            {
+                chroma_table[current_sample][z] = max_index + 1;
+                uint x = current_sample >> 5;
+                uint y = current_sample & 0x1f;
+
+                plotf(280 + x, 40 + y + z * 40, gtia_palette[(max_index + 1) * 16 + 6]);
+                // plotf(280 + x, 40 + y + z * 40, gtia_palette[(max_index + 1) * 16 + 6]);
+                // plotf(280 + x, 40 + y + z * 40, gtia_palette[(max_index + 1) * 16 + 6]);
+            }
+
             plotf(266 + (current_sample % 4), 266 - (current_sample / 4), WHITE);
         }
         if (row == 7)

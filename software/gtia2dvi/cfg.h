@@ -33,12 +33,12 @@ struct AppConfig
 struct AppConfig app_cfg __attribute__((section(".uninitialized_data")));
 
 // chroma calibration definition
-#define SAMPLING_FRAMES     30
+#define SAMPLING_FRAMES     10
 #define SAMPLE_Y_FIRST      70
 #define SAMPLE_Y_LAST       155
-#define SAMPLE_X_FIRST      39
-#define SAMPLE_X_SIZE       9
-#define COUNTS              226
+#define SAMPLE_X_FIRST      33
+#define SAMPLE_X_SIZE       8
+#define COUNTS              200
 #define MIN_CALIB_COUNT     0
 #define MAX_SAMPLE          0x3ff
 

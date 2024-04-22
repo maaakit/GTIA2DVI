@@ -7,13 +7,18 @@
 
 
 .wrap_target
-    mov     X OSR                 ; X <- number of 1b samples
-    wait    1 irq 7 [0]            ; wait for irq 0 then clear  
-    nop [0]
+    mov     X OSR                ; X <- number of chroma samples
+    wait    1 irq 7   ; [1]       ; wait for irq 0 then clear  
+;    wait 0 gpio OSC_PIN
 sample_loop:
-    in      pins 1                 ; 1b sample accquire
-    jmp     X-- sample_loop        ; loop
+    set  Y 31
+    wait 0 gpio OSC_PIN ;[0]
+bit_loop:    
+    in      pins 1               ; 1b sample accquire
+    jmp     Y-- bit_loop
+    jmp     X-- sample_loop      ; loop
 .wrap
+
 
 % c-sdk {
 #include "hardware/clocks.h"
@@ -30,23 +35,25 @@ sample_loop:
 
 static inline void gtia_color_program_delay(uint delay)
 {
-    ; // gtia_color_program_instructions[1] = 0x3fc7;
-    if (delay >= 31)
-    {
-        uint instr1 = (0x3fc7 & 0xe0ff) | ((31 & 0x3f) << 8);
-        GTIA_COLOR_PIO->instr_mem[GTIA_COLOR_PGM_OFFSET + 1] = instr1;
-    }
-    delay = delay - 31;
-    uint instr2 = (0xa042 & 0xe0ff) | ((delay & 0x3f) << 8);
-    GTIA_COLOR_PIO->instr_mem[GTIA_COLOR_PGM_OFFSET + 2] = instr2;
+    ; ; // gtia_color_program_instructions[1] = 0x3fc7;
+    ;// if (delay >= 31)
+    ;// {
+    ;//     uint instr1 = (0x3fc7 & 0xe0ff) | ((31 & 0x3f) << 8);
+    ;//     GTIA_COLOR_PIO->instr_mem[GTIA_COLOR_PGM_OFFSET + 1] = instr1;
+    ;// }
+    ;// delay = delay - 31;
+    ;// uint instr2 = (0xa042 & 0xe0ff) | ((delay & 0x3f) << 8);
+    ;// GTIA_COLOR_PIO->instr_mem[GTIA_COLOR_PGM_OFFSET + 2] = instr2;
 }
 
 static inline void gtia_color_program_init(uint32_t line_length) {
 
-   pio_add_program_at_offset(GTIA_COLOR_PIO, &gtia_color_program, GTIA_COLOR_PGM_OFFSET);
+    uint offset = pio_add_program(GTIA_PAL_PIO, &gtia_pal_v2_program);
+
+    ;//pio_add_program_at_offset(GTIA_COLOR_PIO, &gtia_color_program, GTIA_COLOR_PGM_OFFSET);
 
     ;// load program
-    pio_sm_config c = gtia_color_program_get_default_config(GTIA_COLOR_PGM_OFFSET);
+    pio_sm_config c = gtia_color_program_get_default_config(offset);
     ;// set first program pin index
     sm_config_set_in_pins(&c, COLOR_PIN); // for WAIT, IN
     sm_config_set_jmp_pin(&c, CSYNC_PIN);
@@ -56,12 +63,14 @@ static inline void gtia_color_program_init(uint32_t line_length) {
     sm_config_set_out_shift(&c, false, true, 32);
     ;// set clock divider to 1 for min delays
 
-    sm_config_set_clkdiv(&c, 1.00390625f  );
+ ;//   sm_config_set_clkdiv(&c, 1.00390625f  );
+
+ ;//   sm_config_set_clkdiv(&c, 1  );
 
     ;// init program
-    pio_sm_init(GTIA_COLOR_PIO, GTIA_COLOR_SM, GTIA_COLOR_PGM_OFFSET, &c);
+    pio_sm_init(GTIA_COLOR_PIO, GTIA_COLOR_SM, offset, &c);
   
-    GTIA_COLOR_PIO->txf[GTIA_COLOR_SM] = 32 * line_length - 1;
+    GTIA_COLOR_PIO->txf[GTIA_COLOR_SM] = line_length - 1;
  ;//   pio_sm_exec(GTIA_COLOR_PIO, sm, pio_encode_mov(pio_y, pio_osr));
 
     ;// start program

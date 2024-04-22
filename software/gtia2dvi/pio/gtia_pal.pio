@@ -7,11 +7,15 @@
 
 
 .wrap_target
-    mov     X OSR                ; X <- number of 1b samples
-    wait    1 irq 6    [9]       ; wait for irq 0 then clear  
-    nop     [0]
+    mov     X OSR                ; X <- number of chroma samples
+    wait    1 irq 6   ; [0]       ; wait for irq 0 then clear  
+;    wait 0 gpio OSC_PIN
 sample_loop:
+    set  Y 31
+    wait 0 gpio OSC_PIN [6]
+bit_loop:    
     in      pins 1               ; 1b sample accquire
+    jmp     Y-- bit_loop
     jmp     X-- sample_loop      ; loop
 .wrap
 
@@ -30,23 +34,26 @@ sample_loop:
 
 static inline void gtia_pal_v2_program_init( uint32_t line_length) {
 
-    pio_add_program_at_offset(GTIA_PAL_PIO, &gtia_pal_v2_program, GTIA_PAL_PGM_OFFSET);
+    uint offset = pio_add_program(GTIA_PAL_PIO, &gtia_pal_v2_program);
+
+    ;//pio_add_program_at_offset(GTIA_PAL_PIO, &gtia_pal_v2_program, GTIA_PAL_PGM_OFFSET);
 
     ;// load program
-    pio_sm_config c = gtia_pal_v2_program_get_default_config(GTIA_PAL_PGM_OFFSET);
+    pio_sm_config c = gtia_pal_v2_program_get_default_config(offset);
     ;// set first program pin index
     sm_config_set_in_pins(&c, PAL_PIN); // for WAIT, IN
-    sm_config_set_jmp_pin(&c, CSYNC_PIN);
+    ;//sm_config_set_jmp_pin(&c, CSYNC_PIN);
 
     ;// configure autopush  
     sm_config_set_in_shift(&c, false, true, 32);
     sm_config_set_out_shift(&c, false, true, 32);
 
-    sm_config_set_clkdiv(&c, 1.00390625f  );
+ ;//   sm_config_set_clkdiv(&c, 1.00390625f  );
+ ;//   sm_config_set_clkdiv(&c, 1  );
 
     ;// init program
-    pio_sm_init(GTIA_PAL_PIO, GTIA_PAL_SM, GTIA_PAL_PGM_OFFSET, &c);
-    GTIA_PAL_PIO->txf[GTIA_PAL_SM] = 32 * line_length - 1; 
+    pio_sm_init(GTIA_PAL_PIO, GTIA_PAL_SM, offset, &c);
+    GTIA_PAL_PIO->txf[GTIA_PAL_SM] = line_length - 1; 
 
     ;// start program
     pio_sm_set_enabled(GTIA_PAL_PIO, GTIA_PAL_SM, true);

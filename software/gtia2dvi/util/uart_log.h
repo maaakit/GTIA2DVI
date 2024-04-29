@@ -3,7 +3,7 @@
 #define UART_LOG_H
 
 #define UART_LOG_BUF_SIZE 128
-#define UART_LOG_SERIAL_BAUD 115200
+#define UART_LOG_SERIAL_BAUD 1000000
 
 #define UART_RX_PIN 9
 #define UART_TX_PIN 8
@@ -79,7 +79,7 @@ static inline void __not_in_flash_func(uart_log_put)(char *s)
         }
     }
 }
-static inline void __not_in_flash_func(uart_log_putln)(char *s)
+static __noinline void __not_in_flash_func(uart_log_putln)(char *s)
 {
     uart_log_put(s);
     uart_log_put("\n");

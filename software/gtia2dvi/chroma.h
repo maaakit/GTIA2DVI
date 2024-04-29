@@ -39,19 +39,15 @@ static inline uint16_t compute_gtia_palette_color_adr(int sample, int row)
 static void inline gtia_color_trans_table_init()
 {
     for (int sample = 0; sample <= MAX_SAMPLE; sample++)
-    {
-        chroma_table[sample][0] = compute_gtia_palette_color_adr(sample, 0);
-        chroma_table[sample][1] = compute_gtia_palette_color_adr(sample, 1);
-    }
+        for (uint x = 0; x < 10; x++)
+            chroma_table[sample][x] = compute_gtia_palette_color_adr(sample, x);
 }
 
 static void inline calib_init()
 {
     for (int i = 0; i <= MAX_SAMPLE; i++)
-    {
-        chroma_table[i][0] = -1;
-        chroma_table[i][1] = -1;
-    }
+        for (uint x = 0; x < 10; x++)
+            chroma_table[i][x] = -1;
 }
 
 static void inline calib_clear()
@@ -66,7 +62,7 @@ static void inline calib_clear()
 
 static void inline calib_count(int row, int pos)
 {
-    counts[pos][row % 2]++;
+    counts[pos - SAMPLE_X_FIRST][row % 2]++;
 }
 
 static void inline calib_redraw(int row, int buf_seq)
@@ -81,16 +77,18 @@ static void inline calib_redraw(int row, int buf_seq)
     }
     else if (row >= SAMPLE_Y_FIRST - 10 && row <= SAMPLE_Y_FIRST - 2)
     {
-        for (uint x = 36; x < CHROMA_SAMPLES - 24; x++)
+        for (uint x = SAMPLE_X_FIRST; x < CHROMA_SAMPLES - 20; x++)
         {
             uint current_sample = decode_color(x, buf_seq);
-            chroma_table[current_sample][row % 2] = 0;
+            int off = x % 5;
+            int z = row % 2;
+            chroma_table[current_sample][off * 2 + z] = 0;
         }
     }
     else
     {
         if (processing == false)
-            for (uint x = 30; x < CHROMA_SAMPLES - 20; x++)
+            for (uint x = SAMPLE_X_FIRST; x < CHROMA_SAMPLES - 20; x++)
             {
                 uint matched = decode_color(x, buf_seq);
 
@@ -103,9 +101,9 @@ static void inline calib_redraw(int row, int buf_seq)
     }
 }
 
-static uint16_t v_a = 0, v_b = 0;
+static uint16_t v_a = 0, v_b = 1;
 
-uint16_t next_sample()
+uint16_t calc_next_sample()
 {
     v_a++;
     if ((v_a + v_b) > 32)
@@ -116,11 +114,11 @@ uint16_t next_sample()
     return (v_b * 32) + v_a;
 }
 
-static void inline next_sample2()
+static void inline switch_to_next_sample()
 {
     calib_clear();
 
-    current_sample = next_sample();
+    current_sample = calc_next_sample();
 
     if (current_sample > MAX_SAMPLE)
     {
@@ -139,7 +137,7 @@ static void inline next_sample2()
 
 static void inline calib_handle(int row)
 {
-    if (row == 5)
+    if (row == 2)
     {
         sample_frame++;
         if (sample_frame == SAMPLING_FRAMES)
@@ -151,18 +149,19 @@ static void inline calib_handle(int row)
     }
     if (processing == true)
     {
-        if (row == 5 || row == 6)
+        if (row >= 2 && row <= 11)
         {
-            uint z = row - 5;
+            uint z = (row - 2) / 5;
+            uint off = (row - 2) % 5;
+
             uint max_sum = 0;
             uint max_index = -1;
             for (uint col = 0; col < 15; col++)
             {
-
                 uint pixel_sum = 0;
-                for (int i = 0; i < SAMPLE_X_SIZE; i++)
+                for (int i = 0; i < SAMPLE_X_SIZE; i = i + 5)
                 {
-                    pixel_sum += counts[(col * 10) + SAMPLE_X_FIRST + i][z];
+                    pixel_sum += counts[(col * 10) +  /* SAMPLE_X_FIRST*/ + i  + off][z];
                 }
                 if (pixel_sum > 0)
                 {
@@ -171,26 +170,29 @@ static void inline calib_handle(int row)
                         max_sum = pixel_sum;
                         max_index = col;
                     }
-                    sprintf(buf, "%d-%d: %d", col + 1, z, pixel_sum);
+                    sprintf(buf, "%x_%d%d %x", col + 1, z, off, pixel_sum);
                     UART_LOG_PUTLN(buf);
                 }
             }
             if (max_sum > MIN_CALIB_COUNT)
             {
-                chroma_table[current_sample][z] = max_index + 1;
+                chroma_table[current_sample][off * 2 + z] = max_index + 1;
                 uint x = current_sample >> 5;
                 uint y = current_sample & 0x1f;
 
-                plotf(280 + x, 40 + y + z * 40, gtia_palette[(max_index + 1) * 16 + 6]);
+                plotf(280 + x + z * 40, 40 + y + off * 40, gtia_palette[(max_index + 1) * 16 + 6]);
                 // plotf(280 + x, 40 + y + z * 40, gtia_palette[(max_index + 1) * 16 + 6]);
                 // plotf(280 + x, 40 + y + z * 40, gtia_palette[(max_index + 1) * 16 + 6]);
+                
+                // sprintf(buf, ">%d@%d%d", max_index + 1, z, off);
+                // UART_LOG_PUTLN(buf);
             }
 
             plotf(266 + (current_sample % 4), 266 - (current_sample / 4), WHITE);
         }
-        if (row == 7)
+        if (row == 12)
         {
-            next_sample2();
+            switch_to_next_sample();
             processing = false;
         }
     }
@@ -215,10 +217,10 @@ static const uint16_t inline decode(uint32_t color, uint32_t pal)
     return vv1 << 5 | vv2;
 }
 
-static inline __inline uint8_t match_color(uint32_t color, uint32_t pal, int row)
+static inline __inline uint8_t match_color(uint32_t color, uint32_t pal, int idx)
 {
     uint16_t sample = decode(color, pal);
-    return chroma_table[sample][row % 2];
+    return chroma_table[sample][idx];
 }
 
 static uint16_t inline decode_color(int x, int buf_seq)

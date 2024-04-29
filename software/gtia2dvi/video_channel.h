@@ -26,8 +26,6 @@
 #define CHROMA_START_OFFSET 17 + LUMA_START_OFFSET / 2
 #define INTERP0_LUMA_SHIFT(x) (0x00001020 + (x))
 
-// #define PTRN 0b1011111110111111
-//#define PTRN 0b10111011
 static inline void calibrate_luma();
 
 void __attribute__((noinline)) __not_in_flash_func(calibrate_chroma)();
@@ -44,8 +42,8 @@ static inline void _wait_and_restart_dma(uint16_t row)
 #endif
     // wait for both DMA channels
     dma_channel_wait_for_finish_blocking(LUMA_DMA_CHANNEL);
-//    dma_channel_wait_for_finish_blocking(PAL_DMA_CHANNEL);
-//    dma_channel_wait_for_finish_blocking(COLOR_DMA_CHANNEL);
+    //    dma_channel_wait_for_finish_blocking(PAL_DMA_CHANNEL);
+    //    dma_channel_wait_for_finish_blocking(COLOR_DMA_CHANNEL);
 
     // restart each DMA channel and set valid destination adress according to current bufer
     dma_channel_set_write_addr(PAL_DMA_CHANNEL, &pal_buf[buf_seq], true);
@@ -62,7 +60,8 @@ static inline void _wait_and_restart_dma(uint16_t row)
     * DMA channels
     * PIO state machines
 */
-static inline void __not_in_flash_func(_setup_gtia_interface)()
+// static inline void __not_in_flash_func(_setup_gtia_interface)()
+static void _setup_gtia_interface()
 {
     // initialize all GPIO data pins as input
     gpio_init_mask(INPUT_PINS_MASK);
@@ -151,7 +150,6 @@ static void __not_in_flash_func(_locate_and_dump_pixel_data)(uint16_t row)
     uint32_t *color_ptr = color_buf[buf_seq];
     uint32_t *pal_ptr = pal_buf[buf_seq];
 
-
     color_ptr += CHROMA_START_OFFSET;
     pal_ptr += CHROMA_START_OFFSET;
 
@@ -208,8 +206,11 @@ static void __attribute__((noinline)) __scratch_y("_draw_luma_and_chroma_row") _
     uint32_t *color_ptr = color_buf[buf_seq];
     uint32_t *pal_ptr = pal_buf[buf_seq];
 
+    uint chr_offset = 0;
+
     color_ptr += CHROMA_START_OFFSET;
     pal_ptr += CHROMA_START_OFFSET;
+    chr_offset += CHROMA_START_OFFSET;
 
 #ifdef DUMP_PIXEL_FEATURE_ENABLED
     if (cmd && y == pxl_dump_pos_y)
@@ -233,7 +234,7 @@ static void __attribute__((noinline)) __scratch_y("_draw_luma_and_chroma_row") _
                 pal_ptr++;
 
                 // second luma (hires) pixel
-                matched = match_color(*color_ptr, *pal_ptr, row);
+                matched = match_color(*color_ptr, *pal_ptr, (chr_offset % 5) * 2 + row % 2);
                 interp0->accum[0] = matched << 5;
                 *pixel_ptr++ = _gtia_color_565(INTERP0_LUMA_SHIFT(4));
 
@@ -246,7 +247,7 @@ static void __attribute__((noinline)) __scratch_y("_draw_luma_and_chroma_row") _
                 pal_ptr++;
 
                 // forth luma (hires) pixel
-                matched = match_color(*color_ptr, *pal_ptr, row);
+                matched = match_color(*color_ptr, *pal_ptr, (chr_offset % 5) * 2 + row % 2);
                 interp0->accum[0] = matched << 5;
                 *pixel_ptr++ = _gtia_color_565(INTERP0_LUMA_SHIFT(12));
             }
@@ -259,7 +260,6 @@ static void __attribute__((noinline)) __scratch_y("_draw_luma_and_chroma_row") _
     }
 #endif
 }
-
 
 static inline void _draw_luma_only_row(uint16_t row)
 {
@@ -299,22 +299,22 @@ void static __attribute__((noinline)) __not_in_flash_func(_handle_uart_rx)()
     {
         switch (c)
         {
-        case 'z':
-            delays[0] = (delays[0] - 1) % 64;
-            sprintf(buf, "%d %d", delays[0], delays[1]);
-            break;
-        case 'x':
-            delays[0] = (delays[0] + 1) % 64;
-            sprintf(buf, "%d %d", delays[0], delays[1]);
-            break;
-        case 'c':
-            delays[1] = (delays[1] - 1) % 64;
-            sprintf(buf, "%d %d", delays[0], delays[1]);
-            break;
-        case 'v':
-            delays[1] = (delays[1] + 1) % 64;
-            sprintf(buf, "%d %d", delays[0], delays[1]);
-            break;
+            // case 'z':
+            //     delays[0] = (delays[0] - 1) % 64;
+            //     sprintf(buf, "%d %d", delays[0], delays[1]);
+            //     break;
+            // case 'x':
+            //     delays[0] = (delays[0] + 1) % 64;
+            //     sprintf(buf, "%d %d", delays[0], delays[1]);
+            //     break;
+            // case 'c':
+            //     delays[1] = (delays[1] - 1) % 64;
+            //     sprintf(buf, "%d %d", delays[0], delays[1]);
+            //     break;
+            // case 'v':
+            //     delays[1] = (delays[1] + 1) % 64;
+            //     sprintf(buf, "%d %d", delays[0], delays[1]);
+            //     break;
 #ifdef DUMP_PIXEL_FEATURE_ENABLED
         case '8':
             pxl_dump_pos_y = (pxl_dump_pos_y - 1) % 288;
@@ -380,7 +380,7 @@ void __scratch_y("process_video_stream") process_video_stream()
 
         if (row == 5 || row == 6)
         {
-            color_burst_process(row);
+            //     color_burst_process(row);
         }
 
         if (row == 5)

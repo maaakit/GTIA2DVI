@@ -12,7 +12,7 @@
 ;    wait 0 gpio OSC_PIN
 sample_loop:
     set  Y 31
-    wait 0 gpio OSC_PIN [6]
+    wait 0 gpio OSC_PIN [3]
 bit_loop:    
     in      pins 1               ; 1b sample accquire
     jmp     Y-- bit_loop

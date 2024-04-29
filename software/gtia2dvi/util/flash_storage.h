@@ -15,9 +15,9 @@
 // FLASH_SECTOR_SIZE     # The size of one sector, in bytes (the minimum amount you can erase)
 // FLASH_PAGE_SIZE       # The size of one page, in bytes (the mimimum amount you can write)
 
-#define PRESET_SECTOR 0
-#define CONFIG_SECTOR 1
-#define PRESET_SIZE 2048
+#define PRESET_SECTOR 2
+#define CONFIG_SECTOR 3
+#define PRESET_SIZE 2048*5
 
 #define FLASH_SECTOR_OFFSET(o) (PICO_FLASH_SIZE_BYTES - FLASH_SECTOR_SIZE * (o)-FLASH_SECTOR_SIZE)
 
@@ -48,7 +48,7 @@ void _save_data(uint32_t flash_offs, const uint8_t *data, size_t count)
 void flash_factory_reset()
 {
     flash_range_erase(FLASH_SECTOR_OFFSET(CONFIG_SECTOR), FLASH_SECTOR_SIZE);
-    flash_range_erase(FLASH_SECTOR_OFFSET(PRESET_SECTOR), FLASH_SECTOR_SIZE);
+    flash_range_erase(FLASH_SECTOR_OFFSET(PRESET_SECTOR), FLASH_SECTOR_SIZE * 3);
 }
 
 bool flash_preset_saved()

@@ -4,8 +4,8 @@
 #define BUTTONS_H
 
 // buttons has to be continous GPIO numbers
-#define BTN_A 8
-#define BTN_B 9
+#define BTN_A 10
+#define BTN_B 11
 
 #define BTN_DOWN false
 
@@ -34,7 +34,7 @@ btn_init()
     gpio_pull_up(BTN_B);
 }
 
-static inline void btn_debounce()
+static inline void __not_in_flash_func( btn_debounce)()
 {
     for (int i = 0; i < 2; i++)
     {

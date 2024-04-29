@@ -16,6 +16,7 @@
 #define LED_PIN 25
 
 #define FORCE_MENU false
+#define LOG_ENABLED
 
 #define INVALID_CHROMA_HANDLER (gtia_palette[luma])
 // #define INVALID_CHROMA_HANDLER (YELLOW)

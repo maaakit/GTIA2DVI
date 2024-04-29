@@ -146,7 +146,6 @@ void __not_in_flash_func(process_video_stream)()
         {
             app_cfg.enableChroma = !app_cfg.enableChroma;
             uart_log_putln("BTN_A");
-                   
         }
         if (btn == BTN_B_SHORT)
         {
@@ -170,13 +169,12 @@ void __not_in_flash_func(process_video_stream)()
             // skip rows outside view port
             continue;
         }
-        if (app_cfg.enableChroma)
+        if (!btn_is_down(BTN_B))
         {
-            _draw_luma_and_chroma_row(row);
-        }
-        else
-        {
-            _draw_luma_only_row(row);
+            if (app_cfg.enableChroma)
+                _draw_luma_and_chroma_row(row);
+            else
+                _draw_luma_only_row(row);
         }
     }
 }

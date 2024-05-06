@@ -147,6 +147,12 @@ static inline void _count_color(int32_t sample, uint32_t row, uint32_t color)
     uint16_t dec = decode_intr(sample);
     if (dec < 0)
         return;
+
+    // PAL GTIA colors 1 and 15 are the same, so use only 1
+    // palette colors 240-255 are used for menu screen 
+    if (color == 15)
+        color = 1;
+
     cnt[((row % 2) << 12) + (dec << 4) + color]++;
 }
 

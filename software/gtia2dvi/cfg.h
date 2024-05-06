@@ -2,7 +2,6 @@
 #ifndef CFG_H
 #define CFG_H
 
-// #define PALETTE TRUE
 #define FRAME_WIDTH (768 / 2)
 #define FRAME_HEIGHT (576 / 2)
 
@@ -18,7 +17,7 @@
 #define FORCE_MENU false
 #define LOG_ENABLED
 
-#define INVALID_CHROMA_HANDLER (gtia_palette[luma])
+#define INVALID_CHROMA_HANDLER (luma)
 // #define INVALID_CHROMA_HANDLER (YELLOW)
 
 struct AppConfig

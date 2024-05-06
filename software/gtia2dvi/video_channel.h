@@ -16,8 +16,6 @@
 
 #define LUMA_START_OFFSET 12
 
-static inline void calibrate_luma();
-
 static inline void calibrate_chroma();
 
 static inline void _wait_and_restart_dma();
@@ -72,7 +70,7 @@ static inline void _draw_luma_and_chroma_row(uint16_t row)
     }
 
     uint32_t matched = 0;
-    uint16_t *ptr = framebuf + y * FRAME_WIDTH + SCREEN_OFFSET_X;
+    uint8_t *ptr = framebuf + y * FRAME_WIDTH + SCREEN_OFFSET_X;
 
     uint32_t *chroma_sample_ptr = chroma_buf[buf_seq];
 
@@ -81,8 +79,8 @@ static inline void _draw_luma_and_chroma_row(uint16_t row)
     {
         uint16_t c = luma_buf[i];
         uint16_t luma = c & 0xf;
-        uint16_t col565 = matched != -1 ? gtia_palette[matched * 16 + luma] : INVALID_CHROMA_HANDLER;
-        *ptr++ = col565;
+        uint8_t color_index = matched != -1 ? matched * 16 + luma : INVALID_CHROMA_HANDLER;
+        *ptr++ = color_index;
 
         luma = (c >> 4) & 0xf;
         chroma_sample_ptr++;
@@ -93,12 +91,12 @@ static inline void _draw_luma_and_chroma_row(uint16_t row)
             matched = match_color(*(ptr + 1), row);
         }
 
-        col565 = matched != -1 ? gtia_palette[matched * 16 + luma] : INVALID_CHROMA_HANDLER;
-        *ptr++ = col565;
+        color_index = matched != -1 ? matched * 16 + luma : INVALID_CHROMA_HANDLER;
+        *ptr++ = color_index;
 
         luma = (c >> 8) & 0xf;
-        col565 = matched != -1 ? gtia_palette[matched * 16 + luma] : INVALID_CHROMA_HANDLER;
-        *ptr++ = col565;
+        color_index = matched != -1 ? matched * 16 + luma : INVALID_CHROMA_HANDLER;
+        *ptr++ = color_index;
 
         luma = (c >> 12) & 0xf;
         chroma_sample_ptr += ((i) & 0x1) + 1;
@@ -108,8 +106,8 @@ static inline void _draw_luma_and_chroma_row(uint16_t row)
         {
             matched = match_color(*(chroma_sample_ptr + 1), row);
         }
-        col565 = matched != -1 ? gtia_palette[matched * 16 + luma] : INVALID_CHROMA_HANDLER;
-        *ptr++ = col565;
+        color_index = matched != -1 ? matched * 16 + luma : INVALID_CHROMA_HANDLER;
+        *ptr++ = color_index;
     }
 }
 
@@ -121,13 +119,13 @@ static inline void _draw_luma_only_row(uint16_t row)
     {
         uint16_t c = luma_buf[i];
         uint8_t pxl = c & 0xf;
-        plot(x++, y, colors[pxl]);
+        plot(x++, y, pxl);
         pxl = (c >> 4) & 0xf;
-        plot(x++, y, colors[pxl]);
+        plot(x++, y, pxl);
         pxl = (c >> 8) & 0xf;
-        plot(x++, y, colors[pxl]);
+        plot(x++, y, pxl);
         pxl = (c >> 12) & 0xf;
-        plot(x++, y, colors[pxl]);
+        plot(x++, y, pxl);
     }
 }
 
@@ -175,43 +173,6 @@ void __not_in_flash_func(process_video_stream)()
                 _draw_luma_and_chroma_row(row);
             else
                 _draw_luma_only_row(row);
-        }
-    }
-}
-
-static __attribute__((noinline)) void __not_in_flash_func(calibrate_luma)(bool (*handler)())
-{
-    _setup_gtia_interface();
-    uint16_t row;
-    bool notFinished = true;
-    while (notFinished)
-    {
-        _wait_and_restart_dma();
-        row = -luma_buf[0];
-
-        if (row == 10)
-        {
-            notFinished = handler();
-        }
-
-        if (row < 60 || row > 159)
-        {
-            continue;
-        }
-
-        uint16_t x = 0;
-        uint16_t y = row - 60 + 140;
-        for (uint8_t i = 8; i < (LUMA_LINE_LENGTH_BYTES / 2); i++)
-        {
-            uint16_t c = luma_buf[i];
-            uint8_t pxl = c & 0xf;
-            plot(x++, y, colors[pxl]);
-            pxl = (c >> 4) & 0xf;
-            plot(x++, y, colors[pxl]);
-            pxl = (c >> 8) & 0xf;
-            plot(x++, y, colors[pxl]);
-            pxl = (c >> 12) & 0xf;
-            plot(x++, y, colors[pxl]);
         }
     }
 }

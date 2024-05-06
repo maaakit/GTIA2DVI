@@ -5,23 +5,12 @@
 #ifndef GFX_H
 #define GFX_H
 
-#define BLACK (0)
-#define RED (0b11111 << 11)
-#define GREEN (0b111111 << 5)
-#define BLUE (0b11111)
-#define YELLOW (RED + GREEN)
-#define WHITE (RED + GREEN + BLUE)
-#define MAGENTA (RED + BLUE)
-#define CYAN (GREEN + BLUE)
-#define GRAY1 ((7 << 11) + (7 << 5) + 7)
-#define GRAY2 ((14 << 11) + (14 << 5) + 14)
-
 struct gfx
 {
     uint16_t posx;
     uint8_t posy;
-    int16_t fore_col;
-    int16_t bkg_col;
+    int8_t fore_col;
+    int8_t bkg_col;
     uint16_t frame_cnt;
 };
 
@@ -33,58 +22,51 @@ static void __not_in_flash("set_pos") set_pos(uint16_t x, uint16_t y)
     gfx_state.posy = y;
 }
 
-uint16_t framebuf[FRAME_WIDTH * FRAME_HEIGHT];
+uint8_t framebuf[FRAME_WIDTH * FRAME_HEIGHT];
 
-static void inline fill_scren(int16_t color_rgb_565)
+static void inline fill_scren(int8_t color)
 {
-    uint32_t *buf = (uint32_t *)framebuf;
-    uint32_t count = FRAME_WIDTH * FRAME_HEIGHT / 2;
-    uint32_t val = (color_rgb_565 << 16) + color_rgb_565;
+    uint16_t *buf = (uint32_t *)framebuf;
+    uint16_t count = FRAME_WIDTH * FRAME_HEIGHT / 2;
+    uint16_t val = (color << 16) + color;
     while (count--)
         *buf++ = val;
 }
 
-static void __not_in_flash("set_fore_col") set_fore_col(int16_t color_rgb_565)
+static void __not_in_flash("set_fore_col") set_fore_col(int8_t color)
 {
-    gfx_state.fore_col = color_rgb_565;
+    gfx_state.fore_col = color;
 }
-static void __not_in_flash("set_back_col") set_back_col(int16_t color_rgb_565)
+static void __not_in_flash("set_back_col") set_back_col(int8_t color)
 {
-    gfx_state.bkg_col = color_rgb_565;
+    gfx_state.bkg_col = color;
 }
-static inline void __not_in_flash("plot") plot(uint16_t x, uint16_t y, int16_t color_rgb_565)
+static inline void __not_in_flash("plot") plot(uint16_t x, uint16_t y, int8_t color)
 {
     if (x < FRAME_WIDTH && y < FRAME_HEIGHT && x > 0 && y > 0)
-        framebuf[y * FRAME_WIDTH + x] = color_rgb_565;
+        framebuf[y * FRAME_WIDTH + x] = color;
 }
 
-#define RGB565(R, G, B) ((((R) >> 3) & 0x1f) << 11) | ((((G) >> 2) & 0x3f) << 5) | (((B) >> 3) & 0x1f)
-#define LUM(X) RGB565(X, X, X)
-static const uint16_t colors[] = {
-    LUM(0), LUM(16), LUM(16 * 2), LUM(16 * 3), LUM(16 * 4), LUM(16 * 5),
-    LUM(16 * 6), LUM(16 * 7), LUM(16 * 8), LUM(16 * 9), LUM(16 * 10), LUM(16 * 11),
-    LUM(16 * 12), LUM(16 * 13), LUM(16 * 14), LUM(16 * 15), LUM(255),
-    BLACK, RED, BLUE, WHITE, GREEN, YELLOW, MAGENTA, CYAN};
 
-static uint16_t *ptr_framebuf = framebuf;
+static uint8_t *ptr_framebuf = framebuf;
 
-static inline void box(uint x, uint y, uint w, uint h, uint color_rgb_565)
+static inline void box(uint x, uint y, uint w, uint h, uint color)
 {
     for (int i = x; i < x + w; i++)
     {
-        plot(i, y, color_rgb_565);
-        plot(i, y + h, color_rgb_565);
+        plot(i, y, color);
+        plot(i, y + h, color);
     }
     for (int i = y; i < y + h; i++)
     {
-        plot(x, i, color_rgb_565);
-        plot(x + w, i, color_rgb_565);
+        plot(x, i, color);
+        plot(x + w, i, color);
     }
 }
 
-static inline void __not_in_flash("plotf") plotf(uint32_t x, uint32_t y, int16_t color_rgb_565)
+static inline void __not_in_flash("plotf") plotf(uint32_t x, uint32_t y, int8_t color)
 {
     if (x < FRAME_WIDTH && y < FRAME_HEIGHT)
-        *(ptr_framebuf + (y * FRAME_WIDTH + x)) = color_rgb_565;
+        *(ptr_framebuf + (y * FRAME_WIDTH + x)) = color;
 }
 #endif // GFX_H

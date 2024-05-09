@@ -107,6 +107,7 @@ static void __not_in_flash_func(core1_scanline_callback)()
 	scanline = (scanline + 1) % FRAME_HEIGHT;
 
 	btn_debounce();
+	uart_log_flush();
 }
 
 static void __not_in_flash_func(setup_display)()

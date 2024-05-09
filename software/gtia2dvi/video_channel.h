@@ -149,7 +149,7 @@ void __not_in_flash_func(process_video_stream)()
         {
             uart_log_putln("BTN_B");
         }
-        uart_log_flush();
+
         _wait_and_restart_dma();
 
         // swap buffer

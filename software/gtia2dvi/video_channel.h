@@ -59,6 +59,69 @@ static inline void _wait_and_restart_dma()
     dma_channel_set_write_addr(LUMA_DMA_CHANNEL, &luma_buf, true);
 }
 
+#ifdef DUMP_PIXEL_FEATURE_ENABLED
+uint16_t pxl_dump_pos_x = 0, pxl_dump_pos_y = 0;
+char cmd = 0;
+
+#define DUMP_PIXEL_DATA_IF_MATCH(X)                                                                                        \
+    if (pixel_ptr == pixel_catch_ptr)                                                                                      \
+    sprintf(buf, "%1d pos: %03d,%03d lu: %02d i: %03d pa: %08x co: %08x / %08x -> %d/%d [%d,%d]",                          \
+            (X) / 4, pxl_dump_pos_x, pxl_dump_pos_y, _get_current_luma(INTERP0_LUMA_SHIFT(X)), pal_ptr - pal_buf[buf_seq], \
+            *pal_ptr, *color_ptr, *(color_ptr + 1), match_color(*color_ptr, *pal_ptr, row), match_color(*(color_ptr + 1), *(pal_ptr + 1), row), decode(*color_ptr, *pal_ptr) & 0x1f, (decode(*color_ptr, *pal_ptr) >> 5) & 0x1f)
+
+/*
+    dumps to UART console debug data describing single pixel pointed by user.
+    pointed pixel is display as red dot that can be moved with UART console with numeric keys:
+    4 for left direction
+    8 for up direction
+    6 for right direction
+    2 for down
+    5 triggers data to be writen to UART
+*/
+static void __not_in_flash_func(_locate_and_dump_pixel_data)(uint16_t row)
+{
+    uint32_t y = row - FIRST_GTIA_ROW_TO_SHOW + SCREEN_OFFSET_Y;
+    uint16_t *pixel_ptr = framebuf + y * FRAME_WIDTH + SCREEN_OFFSET_X;
+    uint16_t *pixel_catch_ptr = pixel_ptr + pxl_dump_pos_x - LUMA_START_OFFSET - 2;
+    uint32_t *color_ptr = color_buf[buf_seq];
+    uint32_t *pal_ptr = pal_buf[buf_seq];
+
+    color_ptr += CHROMA_START_OFFSET;
+    pal_ptr += CHROMA_START_OFFSET;
+
+    for (uint32_t i = LUMA_START_OFFSET; i < (LUMA_LINE_LENGTH_BYTES / 2) - LUMA_WORDS_TO_SKIP; i++)
+    {
+        uint32_t luma_4px = luma_buf[i];
+        interp0->accum[1] = luma_4px << 1;
+
+        // first luma (hires) pixel
+        DUMP_PIXEL_DATA_IF_MATCH(0);
+        *pixel_ptr++ = BLACK;
+
+        color_ptr++;
+        pal_ptr++;
+
+        // second luma (hires) pixel
+        DUMP_PIXEL_DATA_IF_MATCH(4);
+        *pixel_ptr++ = BLACK;
+
+        // third luma (hires) pixel
+        DUMP_PIXEL_DATA_IF_MATCH(8);
+        *pixel_ptr++ = BLACK;
+
+        // move to next chroma pixel
+        color_ptr++;
+        pal_ptr++;
+
+        // forth luma (hires) pixel
+        DUMP_PIXEL_DATA_IF_MATCH(12);
+        *pixel_ptr++ = BLACK;
+    }
+    uart_log_putln(buf);
+    cmd = 0;
+}
+#endif
+
 static inline void _draw_luma_and_chroma_row(uint16_t row)
 {
     uint32_t y = row - FIRST_GTIA_ROW_TO_SHOW + SCREEN_OFFSET_Y;
@@ -80,58 +143,34 @@ static inline void _draw_luma_and_chroma_row(uint16_t row)
         uint16_t c = luma_buf[i];
         uint16_t luma = c & 0xf;
         uint8_t color_index = matched != -1 ? matched * 16 + luma : INVALID_CHROMA_HANDLER;
-
-#ifdef SKIP_UNMATCHED_CHROMA_PIXELS
-        if (matched == -1)
-            ptr++;
-        else
-#endif
-            *ptr++ = color_index;
+        *ptr++ = color_index;
 
         luma = (c >> 4) & 0xf;
         chroma_sample_ptr++;
 
         matched = match_color(*chroma_sample_ptr, row);
-        // if (matched == -1)
-        // {
-        //     matched = match_color(*(ptr + 1), row);
-        // }
+        if (matched == -1)
+        {
+            matched = match_color(*(ptr + 1), row);
+        }
 
         color_index = matched != -1 ? matched * 16 + luma : INVALID_CHROMA_HANDLER;
-
-#ifdef SKIP_UNMATCHED_CHROMA_PIXELS
-        if (matched == -1)
-            ptr++;
-        else
-#endif
-            *ptr++ = color_index;
+        *ptr++ = color_index;
 
         luma = (c >> 8) & 0xf;
         color_index = matched != -1 ? matched * 16 + luma : INVALID_CHROMA_HANDLER;
-
-#ifdef SKIP_UNMATCHED_CHROMA_PIXELS
-        if (matched == -1)
-            ptr++;
-        else
-#endif
-            *ptr++ = color_index;
+        *ptr++ = color_index;
 
         luma = (c >> 12) & 0xf;
         chroma_sample_ptr += ((i) & 0x1) + 1;
 
         matched = match_color(*chroma_sample_ptr, row);
-        // if (matched == -1)
-        // {
-        //     matched = match_color(*(chroma_sample_ptr + 1), row);
-        // }
-        color_index = matched != -1 ? matched * 16 + luma : INVALID_CHROMA_HANDLER;
-
-#ifdef SKIP_UNMATCHED_CHROMA_PIXELS
         if (matched == -1)
-            ptr++;
-        else
-#endif
-            *ptr++ = color_index;
+        {
+            matched = match_color(*(chroma_sample_ptr + 1), row);
+        }
+        color_index = matched != -1 ? matched * 16 + luma : INVALID_CHROMA_HANDLER;
+        *ptr++ = color_index;
     }
 }
 
@@ -191,13 +230,28 @@ void __not_in_flash_func(process_video_stream)()
             // skip rows outside view port
             continue;
         }
-        if (!btn_is_down(BTN_B))
+#ifdef DUMP_PIXEL_FEATURE_ENABLED
+        if (cmd && y == pxl_dump_pos_y)
         {
-            if (app_cfg.enableChroma)
-                _draw_luma_and_chroma_row(row);
-            else
-                _draw_luma_only_row(row);
+            _locate_and_dump_pixel_data(row);
         }
+        else
+        {
+#endif
+            if (!btn_is_down(BTN_B))
+            {
+                if (app_cfg.enableChroma)
+                    _draw_luma_and_chroma_row(row);
+                else
+                    _draw_luma_only_row(row);
+            }
+#ifdef DUMP_PIXEL_FEATURE_ENABLED
+        }
+        if (pxl_dump_pos_x != 0 && pxl_dump_pos_y != 0)
+        {
+            plotf(pxl_dump_pos_x, pxl_dump_pos_y, RED);
+        }
+#endif
     }
 }
 
@@ -210,6 +264,15 @@ void __not_in_flash_func(calibrate_chroma)()
 
     _setup_gtia_interface();
 
+    for (int x = 0; x < 2048; x++)
+    {
+        for (int y = 0; y < 4; y++)
+        {
+            mapping[0][y][x] = -1;
+            mapping[1][y][x] = -1;
+        }
+    }
+
     uint16_t row;
 
     while (true)
@@ -219,7 +282,7 @@ void __not_in_flash_func(calibrate_chroma)()
         buf_seq = (buf_seq + 1) % 2;
 
         row = -luma_buf[0];
-        if (row == 2)
+        if (row == 10)
         {
             frame++;
         }

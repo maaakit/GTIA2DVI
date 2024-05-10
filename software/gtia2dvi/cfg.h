@@ -14,7 +14,7 @@
 
 #define LED_PIN 25
 
-#define FORCE_MENU false
+#define FORCE_MENU true
 #define LOG_ENABLED
 
 #define INVALID_CHROMA_HANDLER (luma)

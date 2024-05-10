@@ -5,18 +5,25 @@
 .define PAL_PIN    6
 .define COLOR_PIN   7
 
+
+.define sample_size_bits 28
+.define delay_offset     12
+
 .wrap_target
     mov X OSR
     wait 1 irq 0
+    in null delay_offset
 pixel_loop:
-    set Y    27
-    wait 0 gpio PAL_PIN
-    wait 1 gpio PAL_PIN
+    set Y    (sample_size_bits - 1)
+    wait 1 gpio OSC_PIN
+    wait 0 gpio OSC_PIN [1]
 bit_loop:
     in      pins 1   
 
     jmp     Y-- bit_loop
     jmp     X-- pixel_loop
+
+    in null (sample_size_bits - delay_offset)
 .wrap
 
 
@@ -28,11 +35,13 @@ bit_loop:
 #define OSC_PIN    5
 #define PAL_PIN    6
 #define COLOR_PIN   7
+;//#define CLK_DIVIDIER 1.0045399f 
+#define CLK_DIVIDIER 1.14805f 
+#define sample_size_bits 28
 
-#define INPUT_PINS_MASK  0xff
-#define GTIA_LUM_NODATA   0xff
-
-#define SYS_CLOCK       295.2f
+;// #define INPUT_PINS_MASK  0xff
+;// #define GTIA_LUM_NODATA   0xff
+;// #define SYS_CLOCK       295.2f
 
 
 static inline void gtia_chroma_ng_program_init(uint sm, uint offset, uint32_t line_length_bytes) {
@@ -43,13 +52,13 @@ static inline void gtia_chroma_ng_program_init(uint sm, uint offset, uint32_t li
     ;//sm_config_set_jmp_pin(&c, CSYNC_PIN);
   
     ;// configure autopush  
-    sm_config_set_in_shift(&c, false, true, 28);
+    sm_config_set_in_shift(&c, false, true, sample_size_bits);
     sm_config_set_out_shift(&c, false, false, 32);
     ;// join fifos 
     ;//sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_RX);
     ;// set clock divider to 1 for min delays
 
-    sm_config_set_clkdiv(&c, 1.0f  );
+    sm_config_set_clkdiv(&c, CLK_DIVIDIER );
 
     ;// init program
     pio_sm_init(pio1, sm, offset, &c);
@@ -58,7 +67,7 @@ static inline void gtia_chroma_ng_program_init(uint sm, uint offset, uint32_t li
     ; pio_sm_exec  (pio1, sm, 0xa04b);  //initial setup -> mov Y, !NULL
     ; pio_sm_exec  (pio1, sm, 0x80a0);  //initial setup -> pull
   
-    pio1->txf[sm] = line_length_bytes-1 ;
+    pio1->txf[sm] = line_length_bytes-1-1 ;
     pio_sm_exec  (pio1, sm, 0x80a0);  //initial setup -> pull
 
     ;// start program

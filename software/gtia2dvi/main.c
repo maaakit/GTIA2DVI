@@ -42,9 +42,9 @@ int main()
 		cfg_init();
 	}
 
-	setup_atari_clocks();
-	measure_freq(CLOCKS_FC0_SRC_VALUE_CLKSRC_GPIN0, "PAL");
-	measure_freq(CLOCKS_FC0_SRC_VALUE_CLKSRC_GPIN1, "OSC");
+	// setup_atari_clocks();
+	// measure_freq(CLOCKS_FC0_SRC_VALUE_CLKSRC_GPIN0, "PAL");
+	// measure_freq(CLOCKS_FC0_SRC_VALUE_CLKSRC_GPIN1, "OSC");
 
 	if (flash_preset_saved())
 	{
@@ -75,7 +75,9 @@ int main()
 	{
 		uart_log_putln("entering menu");
 		uart_log_flush_blocking();
-		main_menu_show();
+//		main_menu_show();
+ 	calibrate_chroma();
+
 	}
 
 	uart_log_putln("about to start gtia video stream");

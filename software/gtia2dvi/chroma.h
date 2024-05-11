@@ -89,7 +89,7 @@ static inline uint16_t __not_in_flash_func(decode_intr)(uint32_t sample)
 
 static inline void __not_in_flash_func(store_color)(int32_t sample, uint32_t row, uint32_t color)
 {
-    uint16_t dec = decode_intr(sample);
+    int16_t dec = decode_intr(sample);
     if (dec > 0)
     {
         calibration_data[dec][row % 2] = color;
@@ -98,7 +98,7 @@ static inline void __not_in_flash_func(store_color)(int32_t sample, uint32_t row
 
 static inline int8_t __not_in_flash_func(match_color)(int32_t sample, uint32_t row)
 {
-    uint16_t dec = decode_intr(sample);
+    int16_t dec = decode_intr(sample);
     if (dec < 0)
         return -1;
     if (dec > 0)
@@ -246,43 +246,168 @@ static inline void __not_in_flash_func(calibration_step2)(uint16_t row)
     }
 }
 
+#define SAMPLING_FRAMES 4
+// uint16_t __not_in_flash("counts") counts[COUNTS][2];
+uint16_t current_sample = 0;
+uint32_t sample_frame = 0;
+bool processing = false;
+
+uint16_t counts[2][200];
+
 static inline void __not_in_flash_func(chroma_calibrate)(uint16_t row)
 {
-    switch (c_step)
-    {
-    case STEP1:
-        calibration_step1(row);
-        if (frame == 200 && row == 300)
-        {
-            c_step = STEP2;
-            uart_log_putln("STEP1 finished");
-            uart_log_flush_blocking();
-        }
-        break;
 
-    case STEP2:
-        calibration_step1(row);
-        if (frame == 400 && row == 300)
+    if (row == 2)
+    {
+        sample_frame++;
+        if (sample_frame == SAMPLING_FRAMES)
         {
-            _process_stats();
-            uart_log_putln("STEP2 finished");
-            uart_log_flush_blocking();
-            c_step = SAVE;
-        }
-        break;
-    case SAVE:
-        if (frame == 500 && row == 300)
-        {
-            uart_log_putln("requesting calibration data save");
-            uart_log_flush_blocking();
-            app_cfg.enableChroma = true;
-            set_post_boot_action(WRITE_CONFIG);
-            set_post_boot_action(WRITE_PRESET);
-            watchdog_enable(1, 1);
+            processing = true;
+            // sprintf(buf, "SMPL: %04x", current_sample);
+            // UART_LOG_PUTLN(buf);
         }
     }
-    // progress
-    plot(frame, 280, WHITE);
+
+    if (processing == true)
+    {
+        if (row == 3 || row == 4)
+        {
+            int z = row % 2;
+            int max_cnt = 0, max_index = 0;
+            int col = 0, cnt = 0;
+            for (int i = 0; i < 200; i++)
+            {
+                cnt = cnt + counts[z][i];
+                counts[z][i] = 0;
+                if ((i * 2) / 25 > col)
+                {
+                    if (cnt > max_cnt)
+                    {
+                        max_cnt = cnt;
+                        max_index = col;
+                    }
+                    cnt = 0;
+                    col++;
+                }
+            }
+
+            if (max_cnt > 0)
+            {
+                uint f = current_sample & 1;
+                uint a = (current_sample >> 1) & 0x1f;
+                uint b = (current_sample >> 6) & 0x1f;
+
+              //  if ((f == 1 && a > 10) || (f == 0 && b > 10))
+                {
+
+                    sprintf(buf, "%03X %d %d %d", current_sample, z, max_cnt, max_index);
+
+                    int c = max_index + 1;
+                    c = c == 15 ? 1 : c;
+                    calibration_data[current_sample][row % 2] = c;
+                    UART_LOG_PUTLN(buf);
+
+                    plotf(280 + a + (f * 40), 40 + b + (z * 40), c * 16 + 6);
+                }
+            }
+
+            plotf(8 + (current_sample / 8), 270 + (current_sample % 8), GREEN);
+        }
+        if (row == 10)
+        {
+            if (current_sample == 0x7ff)
+            {
+                //  current_sample = 0;
+                uart_log_putln("requesting calibration data save");
+                uart_log_flush_blocking();
+                app_cfg.enableChroma = true;
+                set_post_boot_action(WRITE_CONFIG);
+                set_post_boot_action(WRITE_PRESET);
+                watchdog_enable(1, 1);
+            }
+            else
+                current_sample++;
+            processing = false;
+            sample_frame = 0;
+        }
+    }
+
+    uint y = row - FIRST_GTIA_ROW_TO_SHOW + SCREEN_OFFSET_Y;
+    if (row > 50 && row < 60)
+    {
+        for (uint x = 36; x < 48; x++)
+        {
+            int16_t dec = decode_intr(chroma_buf[buf_seq][x]);
+            calibration_data[dec][row % 2] = 0;
+        }
+    }
+
+    if (row > 65 && row < 270)
+
+        for (uint x = 36; x < (CHROMA_LINE_LENGTH - 10); x++)
+        {
+            int16_t dec = decode_intr(chroma_buf[buf_seq][x]);
+            if (row > 75 && row < 125)
+            {
+                if (x >= 39 && x <= 223)
+                    if (current_sample == dec)
+                    {
+                        counts[row % 2][x - 39]++;
+                    }
+            }
+            uint8_t col;
+            if (dec == current_sample)
+            {
+                col = row % 2 ? MAGENTA : BLUE;
+            }
+            else if (dec < current_sample)
+            {
+                int8_t c = calibration_data[dec][row % 2];
+                    col = c == 0 ? BLACK : c * 16 + 6;
+            }
+            else
+            {
+                col = chroma_buf[buf_seq][x] ? GRAY2 : BLACK;
+            }
+
+            plotf(x + 8, y, col);
+        }
+
+    // switch (c_step)
+    // {
+    // case STEP1:
+    //     calibration_step1(row);
+    //     if (frame == 200 && row == 300)
+    //     {
+    //         c_step = STEP2;
+    //         uart_log_putln("STEP1 finished");
+    //         uart_log_flush_blocking();
+    //     }
+    //     break;
+
+    // case STEP2:
+    //     calibration_step1(row);
+    //     if (frame == 400 && row == 300)
+    //     {
+    //         _process_stats();
+    //         uart_log_putln("STEP2 finished");
+    //         uart_log_flush_blocking();
+    //         c_step = SAVE;
+    //     }
+    //     break;
+    // case SAVE:
+    //     if (frame == 500 && row == 300)
+    //     {
+    //         // uart_log_putln("requesting calibration data save");
+    //         // uart_log_flush_blocking();
+    //         // app_cfg.enableChroma = true;
+    //         // set_post_boot_action(WRITE_CONFIG);
+    //         // set_post_boot_action(WRITE_PRESET);
+    //         // watchdog_enable(1, 1);
+    //     }
+    // }
+    // // progress
+    // plot(frame, 280, WHITE);
 }
 
 #endif

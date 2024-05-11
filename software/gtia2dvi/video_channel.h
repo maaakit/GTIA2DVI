@@ -80,34 +80,58 @@ static inline void _draw_luma_and_chroma_row(uint16_t row)
         uint16_t c = luma_buf[i];
         uint16_t luma = c & 0xf;
         uint8_t color_index = matched != -1 ? matched * 16 + luma : INVALID_CHROMA_HANDLER;
-        *ptr++ = color_index;
+
+#ifdef SKIP_UNMATCHED_CHROMA_PIXELS
+        if (matched == -1)
+            ptr++;
+        else
+#endif
+            *ptr++ = color_index;
 
         luma = (c >> 4) & 0xf;
         chroma_sample_ptr++;
 
         matched = match_color(*chroma_sample_ptr, row);
-        if (matched == -1)
-        {
-            matched = match_color(*(ptr + 1), row);
-        }
+        // if (matched == -1)
+        // {
+        //     matched = match_color(*(ptr + 1), row);
+        // }
 
         color_index = matched != -1 ? matched * 16 + luma : INVALID_CHROMA_HANDLER;
-        *ptr++ = color_index;
+
+#ifdef SKIP_UNMATCHED_CHROMA_PIXELS
+        if (matched == -1)
+            ptr++;
+        else
+#endif
+            *ptr++ = color_index;
 
         luma = (c >> 8) & 0xf;
         color_index = matched != -1 ? matched * 16 + luma : INVALID_CHROMA_HANDLER;
-        *ptr++ = color_index;
+
+#ifdef SKIP_UNMATCHED_CHROMA_PIXELS
+        if (matched == -1)
+            ptr++;
+        else
+#endif
+            *ptr++ = color_index;
 
         luma = (c >> 12) & 0xf;
         chroma_sample_ptr += ((i) & 0x1) + 1;
 
         matched = match_color(*chroma_sample_ptr, row);
-        if (matched == -1)
-        {
-            matched = match_color(*(chroma_sample_ptr + 1), row);
-        }
+        // if (matched == -1)
+        // {
+        //     matched = match_color(*(chroma_sample_ptr + 1), row);
+        // }
         color_index = matched != -1 ? matched * 16 + luma : INVALID_CHROMA_HANDLER;
-        *ptr++ = color_index;
+
+#ifdef SKIP_UNMATCHED_CHROMA_PIXELS
+        if (matched == -1)
+            ptr++;
+        else
+#endif
+            *ptr++ = color_index;
     }
 }
 
@@ -195,14 +219,14 @@ void __not_in_flash_func(calibrate_chroma)()
         buf_seq = (buf_seq + 1) % 2;
 
         row = -luma_buf[0];
-        if (row == 10)
+        if (row == 2)
         {
             frame++;
         }
-        if (row < FIRST_GTIA_ROW_TO_SHOW || row >= FIRST_GTIA_ROW_TO_SHOW + GTIA_ROWS_TO_SHOW)
-        {
-            continue;
-        }
+        // if (row < FIRST_GTIA_ROW_TO_SHOW || row >= FIRST_GTIA_ROW_TO_SHOW + GTIA_ROWS_TO_SHOW)
+        // {
+        //     continue;
+        // }
         chroma_calibrate(row);
     }
 }

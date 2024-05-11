@@ -42,10 +42,6 @@ int main()
 		cfg_init();
 	}
 
-	setup_atari_clocks();
-	measure_freq(CLOCKS_FC0_SRC_VALUE_CLKSRC_GPIN0, "PAL");
-	measure_freq(CLOCKS_FC0_SRC_VALUE_CLKSRC_GPIN1, "OSC");
-
 	if (flash_preset_saved())
 	{
 		uart_log_putln("preset loaded");
@@ -70,6 +66,7 @@ int main()
 	uart_log_putln("about to start dvi infrastructure");
 	uart_log_flush_blocking();
 	setup_display();
+
 
 	if (menu_requested || FORCE_MENU)
 	{

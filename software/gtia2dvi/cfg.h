@@ -18,7 +18,9 @@
 #define LOG_ENABLED
 
 #define INVALID_CHROMA_HANDLER (luma)
-// #define INVALID_CHROMA_HANDLER (YELLOW)
+//#define INVALID_CHROMA_HANDLER (YELLOW)
+
+//#define SKIP_UNMATCHED_CHROMA_PIXELS 1
 
 struct AppConfig
 {

@@ -19,6 +19,9 @@ uint16_t frame = 0;
 uint8_t buf_seq = 0;
 uint32_t chroma_buf[2][CHROMA_LINE_LENGTH + 2];
 
+#define CALIBRATION_FIRST_BAR_CHROMA_INDEX 31
+#define SAMPLING_FRAMES 10
+
 enum calib_step
 {
     STEP1 = 1,
@@ -246,7 +249,6 @@ static inline void __not_in_flash_func(calibration_step2)(uint16_t row)
     }
 }
 
-#define SAMPLING_FRAMES 12
 // uint16_t __not_in_flash("counts") counts[COUNTS][2];
 uint16_t current_sample = 0;
 uint32_t sample_frame = 0;
@@ -256,6 +258,7 @@ int8_t mapping[2][4][2048];
 
 static inline void store_color_x(int row, int x, int16_t decode, int8_t color_index)
 {
+
     if (decode < 0)
         return;
 
@@ -268,6 +271,17 @@ static inline void store_color_x(int row, int x, int16_t decode, int8_t color_in
     if (mapping[row % 2][x % 4][decode] == -1)
     {
         mapping[row % 2][x % 4][decode] = color_index;
+
+        // #define VAL_F(x)     (x)
+        // #define VAL_A(x)     (x<<1)
+        // #define VAL_B(x)     (x<<6)
+
+        // int f = decode & 0x1;
+        // int a = (decode >> 1) & 0x1f;
+        // int b = (decode >> 6) & 0x1f;
+
+        // plotf(200 + (x % 4) * 40 + a, 16 + (row % 2) * 40 + (f * 80) + b, color_index * 16 + 6);
+
         if (color_index < 1)
         {
             return;
@@ -299,122 +313,128 @@ static inline void __not_in_flash_func(chroma_calibrate)(uint16_t row)
             processing = false;
             sample_frame = 0;
         }
+        // draw progress bar
+        plotf(8 + (current_sample / 8), 270 + (current_sample % 8), GREEN);
     }
 
     uint32_t y = row - FIRST_GTIA_ROW_TO_SHOW + SCREEN_OFFSET_Y;
 
-    // if (y == scanline || y + 1 == scanline)
-    // {
-    //     // don't modify line which is currently transferred to TDMS pipeline
-    //     return;
-    // }
-
-    // uint32_t matched = 0;
-    // uint8_t *ptr = framebuf + y * FRAME_WIDTH + SCREEN_OFFSET_X;
-
-    // uint32_t *chroma_sample_ptr = chroma_buf[buf_seq];
-
-    if (row == 60)
+    if (row == 64)
     {
-        for (int x = 32; x < 32 + 150; x++)
+        // draw expected colors row
+        for (int x = CALIBRATION_FIRST_BAR_CHROMA_INDEX; x < CALIBRATION_FIRST_BAR_CHROMA_INDEX + 150; x++)
         {
-            int col = (x - 22) / 10;
+            int col = 1 + (x - CALIBRATION_FIRST_BAR_CHROMA_INDEX) / 10;
             if (col == 15)
                 col = 1;
-            plotf(x + 8, y, col * 16 + 6);
+
+            if (((x - CALIBRATION_FIRST_BAR_CHROMA_INDEX) % 10) < 8)
+                plotf(x, y, col * 16 + 6);
         }
     }
-    else if (row > 60 && row < 65)
+
+    // map black color
+    if (row > 50 && row < 60)
     {
         for (int x = 32; x < 64; x++)
         {
             uint sample = chroma_buf[buf_seq][x];
             int dec = decode_intr(sample);
             if (sample == 0)
-                store_color_x(row, x, dec, 0);
+                store_color_x(row, x, dec, BLACK);
 
             // mapping[row % 2][x % 4][dec] = 0;
-            plotf(x + 8, y, BLACK);
+            plotf(x, y, BLACK);
         }
     }
 
-    else
-
-        for (uint32_t i = 0; i < (CHROMA_LINE_LENGTH); i++)
+    if (row > 66 && row < 266)
+    {
+        for (uint32_t i = 28; i < (CHROMA_LINE_LENGTH - 8); i++)
         {
             uint sample = chroma_buf[buf_seq][i];
             int dec = decode_intr(sample);
 
             if (dec == current_sample && row > 75 && row < 150)
             {
-                plotf(i + 8, y, row % 2 ? RED : MAGENTA);
+                // mark matching pixels
+                plotf(i, y, row % 2 ? RED : MAGENTA);
 
-                if (sample!=0)
-               // if (i % 10 > 1 && i % 10 <= 9)
+                if (sample != 0)
                 {
                     if (dec == current_sample)
                     {
-                        uint8_t col = (i - 22) / 10;
-                        if (col > 0 && col <= 15)
-                            store_color_x(row, i, dec, col);
-                        // mapping[row % 2][i % 4][dec] = col;
+                        uint8_t col = 1 + (i - CALIBRATION_FIRST_BAR_CHROMA_INDEX) / 10;
+                        if (col == 15)
+                            col = 1;
+
+                        if (i >= CALIBRATION_FIRST_BAR_CHROMA_INDEX && i < CALIBRATION_FIRST_BAR_CHROMA_INDEX + 150)
+                        {
+                            if (((i - CALIBRATION_FIRST_BAR_CHROMA_INDEX) % 10) < 8)
+                            {
+                                if (col > 0 && col <= 15)
+                                    store_color_x(row, i, dec, col);
+                            }
+                            else
+                                store_color_x(row, i, dec, BLACK);
+                        }
+                        else if (i == CALIBRATION_FIRST_BAR_CHROMA_INDEX - 1)
+                        {
+                            store_color_x(row, i, dec, BLACK);
+                        }
                     }
                 }
             }
+            // draw already mapped colors
             else if (dec < current_sample)
             {
-                // if (dec < 0)
-                // {
-                //     plotf(i + 8, y, BLUE_DD);
-                // }
-                // else
-                {
-                    int8_t col = mapping[row % 2][i % 4][dec];
-                    if (col < 0){}
-                     //   plotf(i + 8, y, YELLOW);
-                    else
-                        plotf(i + 8, y, col * 16 + 6);
-                }
+                int8_t col = mapping[row % 2][i % 4][dec];
+
+                if (col == 0)
+                    plotf(i, y, BLACK);
+                else if (col > 15 || col < 0)
+                    plotf(i, y, YELLOW);
+                else
+                    plotf(i, y, col * 16 + 6);
             }
 
             else
-                plotf(i + 8, y, sample == 0 || dec < 0 ? BLACK : GRAY1);
-
-            // switch (c_step)
-            // {
-            // case STEP1:
-            //     calibration_step1(row);
-            //     if (frame == 200 && row == 300)
-            //     {
-            //         c_step = STEP2;
-            //         uart_log_putln("STEP1 finished");
-            //         uart_log_flush_blocking();
-            //     }
-            //     break;
-
-            // case STEP2:
-            //     calibration_step1(row);
-            //     if (frame == 400 && row == 300)
-            //     {
-            //         _process_stats();
-            //         uart_log_putln("STEP2 finished");
-            //         uart_log_flush_blocking();
-            //         c_step = SAVE;
-            //     }
-            //     break;
-            // case SAVE:
-            //     if (frame == 500 && row == 300)
-            //     {
-            //         uart_log_putln("requesting calibration data save");
-            //         uart_log_flush_blocking();
-            //         app_cfg.enableChroma = true;
-            //         set_post_boot_action(WRITE_CONFIG);
-            //         set_post_boot_action(WRITE_PRESET);
-            //         watchdog_enable(1, 1);
-            //     }
-            // }
-            // // progress
-            // plot(frame, 280, WHITE);
+                plotf(i, y, sample == 0 || dec < 0 ? BLACK : GRAY1);
         }
+    }
+
+    // switch (c_step)
+    // {
+    // case STEP1:
+    //     calibration_step1(row);
+    //     if (frame == 200 && row == 300)
+    //     {
+    //         c_step = STEP2;
+    //         uart_log_putln("STEP1 finished");
+    //         uart_log_flush_blocking();
+    //     }
+    //     break;
+
+    // case STEP2:
+    //     calibration_step1(row);
+    //     if (frame == 400 && row == 300)
+    //     {
+    //         _process_stats();
+    //         uart_log_putln("STEP2 finished");
+    //         uart_log_flush_blocking();
+    //         c_step = SAVE;
+    //     }
+    //     break;
+    // case SAVE:
+    //     if (frame == 500 && row == 300)
+    //     {
+    //         uart_log_putln("requesting calibration data save");
+    //         uart_log_flush_blocking();
+    //         app_cfg.enableChroma = true;
+    //         set_post_boot_action(WRITE_CONFIG);
+    //         set_post_boot_action(WRITE_PRESET);
+    //         watchdog_enable(1, 1);
+    //     }
+    // }
 }
 #endif

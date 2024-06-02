@@ -11,7 +11,7 @@
 #include "ui/app_menu.h"
 #include "util/post_boot.h"
 #include "util/uart_log.h"
-#include "clock_sync.h"
+#include "gtia_dump.h"
 
 int main()
 {
@@ -31,6 +31,17 @@ int main()
 
 	btn_init();
 
+	sleep_ms(10);
+
+	if (gtia_dump_is_requested() || GTIA_DUMP_FORCE)
+	{
+		uart_log_putln("GTIA DUMP mode requested");
+		uart_log_flush_blocking();
+		gtia_dump_process();
+	}
+
+	bool menu_requested = btn_is_down(BTN_A);
+
 	if (flash_config_saved())
 	{
 		uart_log_putln("config loaded");
@@ -42,9 +53,6 @@ int main()
 		cfg_init();
 	}
 
-	// setup_atari_clocks();
-	// measure_freq(CLOCKS_FC0_SRC_VALUE_CLKSRC_GPIN0, "PAL");
-	// measure_freq(CLOCKS_FC0_SRC_VALUE_CLKSRC_GPIN1, "OSC");
 
 	if (flash_preset_saved())
 	{
@@ -58,9 +66,6 @@ int main()
 		app_cfg.enableChroma = false;
 	}
 
-	sleep_ms(100);
-	bool menu_requested = btn_is_down(BTN_A);
-	uart_log_putln("menu requested");
 	uart_log_flush_blocking();
 
 	sleep_ms(500);
@@ -75,9 +80,8 @@ int main()
 	{
 		uart_log_putln("entering menu");
 		uart_log_flush_blocking();
-//		main_menu_show();
- 	calibrate_chroma();
-
+		//		main_menu_show();
+		calibrate_chroma();
 	}
 
 	uart_log_putln("about to start gtia video stream");

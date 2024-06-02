@@ -3,7 +3,7 @@
 #define UART_LOG_H
 
 #define UART_LOG_BUF_SIZE 128
-#define UART_LOG_SERIAL_BAUD 230400
+#define UART_LOG_SERIAL_BAUD 230400 
 
 #define UART_RX_PIN 9
 #define UART_TX_PIN 8

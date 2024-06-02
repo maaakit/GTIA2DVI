@@ -3,7 +3,7 @@
 #define UART_LOG_H
 
 #define UART_LOG_BUF_SIZE 128
-#define UART_LOG_SERIAL_BAUD 1000000
+#define UART_LOG_SERIAL_BAUD 230400
 
 #define UART_RX_PIN 9
 #define UART_TX_PIN 8
@@ -22,7 +22,7 @@ static char uart_8n1_buffer[UART_LOG_BUF_SIZE];
 static uint16_t uart_8n1_index_end = 0;
 static uint16_t uart_8n1_index_cur = 0;
 
-char buf[128];
+char buf[1024];
 
 static inline void uart_log_init()
 {

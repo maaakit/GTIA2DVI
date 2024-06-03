@@ -20,7 +20,7 @@ uint8_t buf_seq = 0;
 uint32_t chroma_buf[2][CHROMA_LINE_LENGTH + 2];
 
 #define CALIBRATION_FIRST_BAR_CHROMA_INDEX 31
-#define SAMPLING_FRAMES 10
+#define SAMPLING_FRAMES 3
 
 enum calib_step
 {
@@ -258,11 +258,10 @@ int8_t mapping[2][4][2048];
 
 static inline void store_color_x(int row, int x, int16_t decode, int8_t color_index)
 {
-
     if (decode < 0)
         return;
 
-    if (color_index > 15)
+    if (color_index > 15 || color_index < 0)
         return;
 
     if (color_index == 15)
@@ -272,27 +271,131 @@ static inline void store_color_x(int row, int x, int16_t decode, int8_t color_in
     {
         mapping[row % 2][x % 4][decode] = color_index;
 
-        // #define VAL_F(x)     (x)
-        // #define VAL_A(x)     (x<<1)
-        // #define VAL_B(x)     (x<<6)
-
-        // int f = decode & 0x1;
-        // int a = (decode >> 1) & 0x1f;
-        // int b = (decode >> 6) & 0x1f;
-
-        // plotf(200 + (x % 4) * 40 + a, 16 + (row % 2) * 40 + (f * 80) + b, color_index * 16 + 6);
-
         if (color_index < 1)
         {
             return;
         }
-        // sprintf(buf, "%d-%d-%d", row % 2, x % 4, color_index);
-        // UART_LOG_PUTLN(buf);
     }
 }
 
-static inline void __not_in_flash_func(chroma_calibrate)(uint16_t row)
+#define MAP_DIAGRAM_BOX_SIZE 36
+#define MAP_DIAGRAM_OFFSET_X 240
+#define MAP_DIAGRAM_OFFSET_Y 16
+
+static inline void update_mapping_diagram(int16_t decode)
 {
+    int f = decode & 0x1;
+    int a = (decode >> 1) & 0x1f;
+    int b = (decode >> 6) & 0x1f;
+    int row, color_index, color;
+
+    for (int mod = 0; mod < 4; mod++)
+    {
+        row = 0;
+        color_index = mapping[row][mod][decode];
+        color = (color_index > 0) ? color_index * 16 + 6 : 2;
+        plotf(MAP_DIAGRAM_OFFSET_X + (mod)*MAP_DIAGRAM_BOX_SIZE + a, MAP_DIAGRAM_OFFSET_Y + (row)*MAP_DIAGRAM_BOX_SIZE + (f * MAP_DIAGRAM_BOX_SIZE * 2) + b, color);
+
+        row = 1;
+        color_index = mapping[row][mod][decode];
+        color = (color_index > 0) ? color_index * 16 + 6 : 2;
+        plotf(MAP_DIAGRAM_OFFSET_X + (mod)*MAP_DIAGRAM_BOX_SIZE + a, MAP_DIAGRAM_OFFSET_Y + (row)*MAP_DIAGRAM_BOX_SIZE + (f * MAP_DIAGRAM_BOX_SIZE * 2) + b, color);
+    }
+}
+
+static inline void update_mapping_diagram_c(int16_t dec, uint i, uint row, int col)
+{
+    int f = dec & 0x1;
+    int a = (dec >> 1) & 0x1f;
+    int b = (dec >> 6) & 0x1f;
+
+    plotf(MAP_DIAGRAM_OFFSET_X + (i % 4) * MAP_DIAGRAM_BOX_SIZE + a, MAP_DIAGRAM_OFFSET_Y + (row % 2) * MAP_DIAGRAM_BOX_SIZE + (f * MAP_DIAGRAM_BOX_SIZE * 2) + b, col);
+}
+
+static inline void update_mapping_diagram_err(int16_t dec, uint i, uint row)
+{
+    update_mapping_diagram_c(dec, i, row, WHITE);
+}
+
+static bool err_draw = false;
+static bool fine_tuned = false;
+
+static inline int8_t fine_tune(int16_t dec, uint16_t x, uint16_t row)
+{
+    // vertical boxes on the right side
+    if (x >= 182 && x <= 189)
+    {
+        if (row > 80 && row < 260)
+        {
+            int col = 1 + ((row - 80) / 12);
+
+            if (col == 15)
+                col = 1;
+
+            if (col > 0 && col <= 15)
+            {
+                store_color_x(row, x, dec, col);
+                update_mapping_diagram_c(dec, x, row, col * 16 + 6);
+                return col;
+            }
+        }
+        return -1;
+    }
+    else
+    {
+        // vertical lines of solid colors on top part of screen
+        if (row > 75 && row < 150)
+        {
+            uint8_t col = 1 + (x - CALIBRATION_FIRST_BAR_CHROMA_INDEX) / 10;
+            if (col == 15)
+                col = 1;
+
+            if (x >= CALIBRATION_FIRST_BAR_CHROMA_INDEX && x < CALIBRATION_FIRST_BAR_CHROMA_INDEX + 150)
+            {
+                if (((x - CALIBRATION_FIRST_BAR_CHROMA_INDEX) % 10) < 8)
+                {
+                    if (col > 0 && col <= 15)
+                    {
+                        store_color_x(row, x, dec, col);
+                        update_mapping_diagram_c(dec, x, row, col * 16 + 6);
+                        return col;
+                    }
+                }
+                return 0;
+            }
+        }
+        else if (row >= 169 && row <= 262)
+        {
+            int px;
+
+            if (x >= 96)
+                px = x - 96;
+            else
+                px = x - 30;
+
+            if (px % 4 < 2)
+            {
+                // strip
+                uint8_t col = 1 + (px / 4);
+                if (col == 15)
+                    col = 1;
+                if (col > 0 && col < 15)
+                {
+                    store_color_x(row, x, dec, col);
+                    update_mapping_diagram_c(dec, x, row, col * 16 + 6);
+                    return col;
+                }
+            }
+        }
+    }
+    return -1;
+}
+
+static inline void __not_in_flash_func(chroma_calibrate_step1)(uint16_t row)
+{
+    err_draw = false;
+    fine_tuned = false;
+
     if (row == 2)
     {
         sample_frame++;
@@ -307,11 +410,21 @@ static inline void __not_in_flash_func(chroma_calibrate)(uint16_t row)
     if (processing == true)
     {
 
-        if (row == 10 && current_sample < 0x7ff)
+        if (row == 10)
         {
-            current_sample++;
-            processing = false;
-            sample_frame = 0;
+            if (current_sample < 0x7ff)
+            {
+                // update mapping diagram
+                update_mapping_diagram(current_sample);
+
+                current_sample++;
+                processing = false;
+                sample_frame = 0;
+            }
+            else
+            {
+                c_step = STEP2;
+            }
         }
         // draw progress bar
         plotf(8 + (current_sample / 8), 270 + (current_sample % 8), GREEN);
@@ -391,10 +504,34 @@ static inline void __not_in_flash_func(chroma_calibrate)(uint16_t row)
                 int8_t col = mapping[row % 2][i % 4][dec];
 
                 if (col == 0)
+                    // mapped black
                     plotf(i, y, BLACK);
+
                 else if (col > 15 || col < 0)
-                    plotf(i, y, YELLOW);
+                // color not mapped
+                {
+                    // if (    fine_tuned == false)
+                    // {
+                    //     col = fine_tune(dec, i, row);
+
+                    //     if (col > 0)
+                    //         plotf(i, y, col * 16 + 6);
+                    //     else
+                    //         plotf(i, y, YELLOW);
+                    //     fine_tuned = true;
+                    // }
+                    // else
+                    {
+                        plotf(i, y, YELLOW);
+                        if (err_draw == false)
+                        {
+                            err_draw = true;
+                            update_mapping_diagram_err(dec, i, row);
+                        }
+                    }
+                }
                 else
+                    // mapped valid GTIA color
                     plotf(i, y, col * 16 + 6);
             }
 
@@ -402,39 +539,78 @@ static inline void __not_in_flash_func(chroma_calibrate)(uint16_t row)
                 plotf(i, y, sample == 0 || dec < 0 ? BLACK : GRAY1);
         }
     }
-
-    // switch (c_step)
-    // {
-    // case STEP1:
-    //     calibration_step1(row);
-    //     if (frame == 200 && row == 300)
-    //     {
-    //         c_step = STEP2;
-    //         uart_log_putln("STEP1 finished");
-    //         uart_log_flush_blocking();
-    //     }
-    //     break;
-
-    // case STEP2:
-    //     calibration_step1(row);
-    //     if (frame == 400 && row == 300)
-    //     {
-    //         _process_stats();
-    //         uart_log_putln("STEP2 finished");
-    //         uart_log_flush_blocking();
-    //         c_step = SAVE;
-    //     }
-    //     break;
-    // case SAVE:
-    //     if (frame == 500 && row == 300)
-    //     {
-    //         uart_log_putln("requesting calibration data save");
-    //         uart_log_flush_blocking();
-    //         app_cfg.enableChroma = true;
-    //         set_post_boot_action(WRITE_CONFIG);
-    //         set_post_boot_action(WRITE_PRESET);
-    //         watchdog_enable(1, 1);
-    //     }
-    // }
 }
+
+static inline void __not_in_flash_func(chroma_calibrate_step2)(uint16_t row)
+{
+    err_draw = false;
+    fine_tuned = false;
+
+    uint32_t y = row - FIRST_GTIA_ROW_TO_SHOW + SCREEN_OFFSET_Y;
+
+    if (row > 66 && row < 266)
+    {
+        for (uint32_t i = 28; i < (CHROMA_LINE_LENGTH - 8); i++)
+        {
+            uint sample = chroma_buf[buf_seq][i];
+            int dec = decode_intr(sample);
+
+            int8_t col = mapping[row % 2][i % 4][dec];
+
+            if (col == 0)
+                // mapped black
+                plotf(i, y, BLACK);
+
+            else if (col > 15 || col < 0)
+            // color not mapped
+            {
+                if (fine_tuned == false)
+                {
+                    col = fine_tune(dec, i, row);
+
+                    if (col > 0)
+                    {
+                        plotf(i, y, col * 16 + 6);
+                      //  update_mapping_diagram_c(dec, i, row, col * 16 + 6);
+                    }
+                    else
+                    {
+                        plotf(i, y, YELLOW);
+                        update_mapping_diagram_err(dec, i, row);
+                    }
+                    fine_tuned = true;
+                }
+                else
+                {
+                    plotf(i, y, YELLOW);
+                    if (err_draw == false)
+                    {
+                        err_draw = true;
+                        update_mapping_diagram_err(dec, i, row);
+                    }
+                }
+            }
+            else
+                // mapped valid GTIA color
+                plotf(i, y, col * 16 + 6);
+        }
+    }
+}
+
+static inline void __not_in_flash_func(chroma_calibrate)(uint16_t row)
+{
+    switch (c_step)
+    {
+    case STEP1:
+        chroma_calibrate_step1(row);
+        break;
+    case STEP2:
+        chroma_calibrate_step2(row);
+        break;
+
+    default:
+        break;
+    }
+}
+
 #endif

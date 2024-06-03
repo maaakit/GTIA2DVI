@@ -31,6 +31,7 @@ const struct dvi_timing __dvi_const(dvi_timing_768x576p_50hz) = {
 
 struct dvi_inst dvi0;
 
+__scratch_y("tmds_palette")
 uint32_t tmds_palette[PALETTE_SIZE * 3];
 
 static inline void prepare_tmds_palette()

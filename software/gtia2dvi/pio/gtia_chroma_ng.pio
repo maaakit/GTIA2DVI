@@ -12,10 +12,11 @@
     mov X OSR
     wait 1 irq 0
 pixel_loop:
-    set Y    (sample_size_bits - 1)
+    set Y    ((sample_size_bits/2) - 1)
     wait 1 gpio OSC_PIN
-    wait 0 gpio OSC_PIN [1]
+    wait 0 gpio OSC_PIN [4]
 bit_loop:
+    in      pins 1   
     in      pins 1   
 
     jmp     Y-- bit_loop

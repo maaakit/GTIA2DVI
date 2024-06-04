@@ -11,6 +11,7 @@
 #define MENU_BOX_H 275
 
 void luma_calibration();
+void calibration_diagram();
 void chroma_calibration();
 void toggle_chroma_decode_val();
 void factory_reset();
@@ -19,7 +20,7 @@ void force_restart();
 void luma_exit();
 void none();
 
-struct TextBox header = {
+static const struct TextBox header = {
     .text = "ATARI GTIA2DVI MENU",
     .textColor = YELLOW,
     .frameColor = GREEN,
@@ -29,27 +30,27 @@ struct TextBox header = {
     .width = MENU_BOX_W,
     .height = 32};
 
-struct MenuItem mainMenuItems[] = {
+static const struct MenuItem mainMenuItems[] = {
     {"Chroma calibration", chroma_calibration},
-    {"Chroma calibration done", none},
+    {"Chroma calibration done", calibration_diagram},
     {"Chroma decode (experimental)", toggle_chroma_decode_val},
     {"Factory reset", factory_reset},
     {"Restart", force_restart},
     {"Save changes", save_config}};
 
-struct Menu mainMenu = {
+static const struct Menu mainMenu = {
     .items = mainMenuItems,
     .itemCount = sizeof(mainMenuItems) / sizeof(mainMenuItems[0]),
     .posX = 10,
     .posY = 60};
 
-struct MenuItem lumaMenuItems[] = {
+static const struct MenuItem lumaMenuItems[] = {
     {"Luma first delay value", luma_exit},
     {"Luma second delay value", luma_exit},
     {"Restore", luma_exit},
     {"Main menu", luma_exit}};
 
-struct Menu lumaMenu = {
+static const struct Menu lumaMenu = {
     .items = lumaMenuItems,
     .itemCount = sizeof(lumaMenuItems) / sizeof(lumaMenuItems[0])};
 
@@ -121,7 +122,18 @@ void do_chroma_calibration()
     fill_scren(BLACK);
     calibrate_chroma();
 }
-
+void calibration_diagram()
+{
+    fill_scren(BLACK);
+    for(int dec=0; dec<2048; dec++){
+        update_mapping_diagram(dec);
+    }
+    while (true)
+    {
+        tight_loop_contents();
+    }
+    
+}    
 void chroma_calibration()
 {
     fill_scren(BLACK);

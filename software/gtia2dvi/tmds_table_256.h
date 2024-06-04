@@ -2,7 +2,7 @@
 #define TMDS_TBL_256_H
 
 
-uint32_t tmds_table_256[256] = {
+static const tmds_table_256[256] = {
     0x7fd00u,
     0x401ffu,
     0x405feu,

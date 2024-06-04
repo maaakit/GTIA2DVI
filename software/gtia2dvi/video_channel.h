@@ -3,6 +3,7 @@
 #include "gtia_palette.h"
 #include "util/buttons.h"
 #include "util/uart_log.h"
+#include "chroma_calibration.h"
 
 #ifndef VIDEO_CHANNEL_H
 #define VIDEO_CHANNEL_H
@@ -16,9 +17,6 @@
 
 #define LUMA_START_OFFSET 12
 
-static inline void calibrate_chroma();
-
-static inline void _wait_and_restart_dma();
 
 uint16_t luma_buf[LUMA_LINE_LENGTH_BYTES / 2];
 
@@ -122,55 +120,40 @@ static void __not_in_flash_func(_locate_and_dump_pixel_data)(uint16_t row)
 }
 #endif
 
+
+static inline int8_t match_color(int chroma_pos, int row)
+{
+    uint32_t sample = chroma_buf[buf_seq][chroma_pos];
+    int dec = decode_intr(sample);
+    int col = calibration_data[row % 2][chroma_pos % 4][dec];
+    if (col < 0)
+        col = 0;
+    return col;
+}
+
 static inline void _draw_luma_and_chroma_row(uint16_t row)
 {
-    uint32_t y = row - FIRST_GTIA_ROW_TO_SHOW + SCREEN_OFFSET_Y;
+    uint16_t x = SCREEN_OFFSET_X;
+    uint16_t y = row - FIRST_GTIA_ROW_TO_SHOW + SCREEN_OFFSET_Y;
+    uint cpos = 22;
+    int col = 0;
 
-    if (y == scanline || y + 1 == scanline)
-    {
-        // don't modify line which is currently transferred to TDMS pipeline
-        return;
-    }
-
-    uint32_t matched = 0;
-    uint8_t *ptr = framebuf + y * FRAME_WIDTH + SCREEN_OFFSET_X;
-
-    uint32_t *chroma_sample_ptr = chroma_buf[buf_seq];
-
-    chroma_sample_ptr += 27;
-    for (uint32_t i = LUMA_START_OFFSET; i < (LUMA_LINE_LENGTH_BYTES / 2); i++)
+    for (uint16_t i = LUMA_START_OFFSET; i < (LUMA_LINE_LENGTH_BYTES / 2); i++)
     {
         uint16_t c = luma_buf[i];
-        uint16_t luma = c & 0xf;
-        uint8_t color_index = matched != -1 ? matched * 16 + luma : INVALID_CHROMA_HANDLER;
-        *ptr++ = color_index;
+        uint8_t luma = c & 0xf;
+        plotf(x++, y, col * 16 + luma);
 
+        col = match_color(cpos++, row);
         luma = (c >> 4) & 0xf;
-        chroma_sample_ptr++;
-
-        matched = match_color(*chroma_sample_ptr, row);
-        if (matched == -1)
-        {
-            matched = match_color(*(ptr + 1), row);
-        }
-
-        color_index = matched != -1 ? matched * 16 + luma : INVALID_CHROMA_HANDLER;
-        *ptr++ = color_index;
+        plotf(x++, y, col * 16 + luma);
 
         luma = (c >> 8) & 0xf;
-        color_index = matched != -1 ? matched * 16 + luma : INVALID_CHROMA_HANDLER;
-        *ptr++ = color_index;
+        plotf(x++, y, col * 16 + luma);
 
+        col = match_color(cpos++, row);
         luma = (c >> 12) & 0xf;
-        chroma_sample_ptr += ((i) & 0x1) + 1;
-
-        matched = match_color(*chroma_sample_ptr, row);
-        if (matched == -1)
-        {
-            matched = match_color(*(chroma_sample_ptr + 1), row);
-        }
-        color_index = matched != -1 ? matched * 16 + luma : INVALID_CHROMA_HANDLER;
-        *ptr++ = color_index;
+        plotf(x++, y, col * 16 + luma);
     }
 }
 
@@ -223,7 +206,7 @@ void __not_in_flash_func(process_video_stream)()
         if (row == 10)
         {
             // increase frame counter once per frame
-            frame++;
+            frame_count++;
         }
         if (row < FIRST_GTIA_ROW_TO_SHOW || row >= FIRST_GTIA_ROW_TO_SHOW + GTIA_ROWS_TO_SHOW)
         {
@@ -264,15 +247,6 @@ void __not_in_flash_func(calibrate_chroma)()
 
     _setup_gtia_interface();
 
-    for (int x = 0; x < 2048; x++)
-    {
-        for (int y = 0; y < 4; y++)
-        {
-            mapping[0][y][x] = -1;
-            mapping[1][y][x] = -1;
-        }
-    }
-
     uint16_t row;
 
     while (true)
@@ -284,7 +258,7 @@ void __not_in_flash_func(calibrate_chroma)()
         row = -luma_buf[0];
         if (row == 10)
         {
-            frame++;
+            frame_count++;
         }
         // if (row < FIRST_GTIA_ROW_TO_SHOW || row >= FIRST_GTIA_ROW_TO_SHOW + GTIA_ROWS_TO_SHOW)
         // {
@@ -294,26 +268,5 @@ void __not_in_flash_func(calibrate_chroma)()
     }
 }
 
-// useful for debug problems
-void __not_in_flash("draw_line_number_histogram") draw_line_number_histogram()
-{
-
-    while (true)
-    {
-        while (!gtia_luma_ng_program_has_data(GTIA_LUMA_SM))
-            tight_loop_contents();
-
-        uint16_t line = gtia_luma_ng_program_get_data(GTIA_LUMA_SM);
-
-        plot(line, luma_buf[line], YELLOW);
-        luma_buf[line]++;
-
-        if (luma_buf[line] > 200)
-        {
-            while (true)
-                tight_loop_contents();
-        }
-    }
-}
 
 #endif

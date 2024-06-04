@@ -14,7 +14,7 @@
 
 #define LED_PIN 25
 
-#define FORCE_MENU true
+#define FORCE_MENU false
 #define LOG_ENABLED
 
 #define INVALID_CHROMA_HANDLER (luma)
@@ -26,7 +26,7 @@ struct AppConfig
     uint32_t pad;
 };
 
-uint8_t calibration_data[2048][2] __attribute__((section(".uninitialized_data")));
+int8_t calibration_data[2][4][2048] __attribute__((section(".uninitialized_data")));
 
 struct AppConfig app_cfg __attribute__((section(".uninitialized_data")));
 

@@ -3,7 +3,6 @@
 #include "cfg.h"
 #include "gfx/font8x8.h"
 #include "gfx/gfx.h"
-#include "chroma.h"
 #include "util/flash_storage.h"
 #include "dvi_display.h"
 #include "video_channel.h"
@@ -80,8 +79,7 @@ int main()
 	{
 		uart_log_putln("entering menu");
 		uart_log_flush_blocking();
-		//		main_menu_show();
-		calibrate_chroma();
+		main_menu_show();
 	}
 
 	uart_log_putln("about to start gtia video stream");

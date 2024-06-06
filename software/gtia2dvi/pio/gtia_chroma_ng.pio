@@ -8,11 +8,31 @@
 
 .define sample_size_bits 28
 
+; .wrap_target
+;     mov X OSR
+;     wait 1 irq 0
+; pixel_loop:
+;     set Y    ((sample_size_bits-3) - 1)
+;     wait 1 gpio OSC_PIN
+;     wait 0 gpio OSC_PIN ;[3]
+; bit_loop:
+;     in      pins 1   
+;     ;in      pins 1   
+
+;     jmp     Y-- bit_loop
+
+;     in      null 3 
+
+;     jmp     X-- pixel_loop
+
+; .wrap
+
+
 .wrap_target
     mov X OSR
     wait 1 irq 0
 pixel_loop:
-    set Y    ((sample_size_bits/2) - 1)
+    set Y    ((sample_size_bits / 2) - 1)
     wait 1 gpio OSC_PIN
     wait 0 gpio OSC_PIN [5]
 bit_loop:
@@ -20,6 +40,9 @@ bit_loop:
     in      pins 1   
 
     jmp     Y-- bit_loop
+
+    ; in      null 3 
+
     jmp     X-- pixel_loop
 
 .wrap
@@ -33,7 +56,7 @@ bit_loop:
 #define OSC_PIN    5
 #define PAL_PIN    6
 #define COLOR_PIN   7
-#define CLK_DIVIDIER 1.14805f 
+#define CLK_DIVIDIER 1.0f 
 #define sample_size_bits 28
 
 

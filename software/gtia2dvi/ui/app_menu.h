@@ -20,7 +20,7 @@ void force_restart();
 void luma_exit();
 void none();
 
-static const struct TextBox header = {
+struct TextBox header = {
     .text = "ATARI GTIA2DVI MENU",
     .textColor = YELLOW,
     .frameColor = GREEN,
@@ -30,7 +30,7 @@ static const struct TextBox header = {
     .width = MENU_BOX_W,
     .height = 32};
 
-static const struct MenuItem mainMenuItems[] = {
+struct MenuItem mainMenuItems[] = {
     {"Chroma calibration", chroma_calibration},
     {"Chroma calibration done", calibration_diagram},
     {"Chroma decode (experimental)", toggle_chroma_decode_val},
@@ -38,19 +38,19 @@ static const struct MenuItem mainMenuItems[] = {
     {"Restart", force_restart},
     {"Save changes", save_config}};
 
-static const struct Menu mainMenu = {
+struct Menu mainMenu = {
     .items = mainMenuItems,
     .itemCount = sizeof(mainMenuItems) / sizeof(mainMenuItems[0]),
     .posX = 10,
     .posY = 60};
 
-static const struct MenuItem lumaMenuItems[] = {
+struct MenuItem lumaMenuItems[] = {
     {"Luma first delay value", luma_exit},
     {"Luma second delay value", luma_exit},
     {"Restore", luma_exit},
     {"Main menu", luma_exit}};
 
-static const struct Menu lumaMenu = {
+struct Menu lumaMenu = {
     .items = lumaMenuItems,
     .itemCount = sizeof(lumaMenuItems) / sizeof(lumaMenuItems[0])};
 

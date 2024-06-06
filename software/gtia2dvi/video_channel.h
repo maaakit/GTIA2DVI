@@ -135,6 +135,13 @@ static inline void _draw_luma_and_chroma_row(uint16_t row)
 {
     uint16_t x = SCREEN_OFFSET_X;
     uint16_t y = row - FIRST_GTIA_ROW_TO_SHOW + SCREEN_OFFSET_Y;
+
+    if (y == scanline || y + 1 == scanline)
+    {
+        // don't modify line which is currently transferred to TDMS pipeline
+        return;
+    }
+
     uint cpos = 22;
     int col = 0;
 

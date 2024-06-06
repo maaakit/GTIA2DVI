@@ -5,7 +5,7 @@
 #include "chroma_map_diagram.h"
 
 #define CALIBRATION_FIRST_BAR_CHROMA_INDEX 31
-#define SAMPLING_FRAMES 5
+#define SAMPLING_FRAMES 10
 
 enum calib_step
 {
@@ -21,7 +21,6 @@ uint32_t sample_frame = 0;
 bool processing = false;
 
 int16_t color_counts[2][4][15];
-
 
 static inline void store_color_x(int row, int x, int16_t decode, int8_t color_index)
 {
@@ -79,8 +78,6 @@ static inline void color_counts_process(int row, uint16_t current_sample)
         store_color_x(mod_row, mod_x, current_sample, max_i);
     }
 }
-
-
 
 static inline void __not_in_flash_func(chroma_calibration_init)()
 {
@@ -359,8 +356,10 @@ static inline void __not_in_flash_func(chroma_calibrate_step1)(uint16_t row)
 
 static inline void __not_in_flash_func(chroma_calibrate_step2)(uint16_t row)
 {
+
     err_draw = false;
-    fine_tuned = false;
+    if (row == 10)
+        fine_tuned = false;
 
     if (row == 10)
     {
@@ -395,13 +394,13 @@ static inline void __not_in_flash_func(chroma_calibrate_step2)(uint16_t row)
             {
                 if (fine_tuned == false)
                 {
+                    fine_tuned = true;
                     col = fine_tune(dec, i, row);
 
                     if (col > 0)
                     {
                         plotf(i, y, col * 16 + 6);
-                        //  update_mapping_diagram_c(dec, i, row, col * 16 + 6);
-                        fine_tuned = true;
+                        update_mapping_diagram_c(dec, i, row, col * 16 + 6);
                     }
                     else
                     {

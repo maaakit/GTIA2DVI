@@ -3,6 +3,11 @@
 #define VAL_F(x)     (x)
 #define VAL_A(x)     (x<<1)
 #define VAL_B(x)     (x<<6)
+
+#define DEC_F(x)     ((x) & 0x1)
+#define DEC_A(x)     (((x) >> 1) & 0x1f)
+#define DEC_B(x)     (((x) >> 6) & 0x1f)
+
 #define OFFSET(x)    (x<<11)
 #define ERR(x)       (x<<15)
 

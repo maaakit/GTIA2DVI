@@ -5,7 +5,7 @@
 #include "chroma_map_diagram.h"
 
 #define CALIBRATION_FIRST_BAR_CHROMA_INDEX 31
-#define SAMPLING_FRAMES 10
+#define SAMPLING_FRAMES 3
 
 enum calib_step
 {
@@ -19,7 +19,8 @@ enum calib_step c_step = STEP1;
 uint16_t current_sample = 0;
 uint32_t sample_frame = 0;
 bool processing = false;
-
+static bool err_draw = false;
+static bool fine_tuned = false;
 int16_t color_counts[2][4][15];
 
 static inline void store_color_x(int row, int x, int16_t decode, int8_t color_index)
@@ -93,9 +94,9 @@ static inline void __not_in_flash_func(chroma_calibration_init)()
 
 static inline bool validate(int16_t dec, uint16_t x, uint16_t row, int8_t color, int treshold)
 {
-    int f = dec & 0x1;
-    int a = (dec >> 1) & 0x1f;
-    int b = (dec >> 6) & 0x1f;
+    int f = DEC_F(dec);
+    int a = DEC_A(dec);
+    int b = DEC_B(dec);
 
     for (int aa = MAX(0, a - 1); aa < MIN(32, a + 1); aa++)
         for (int bb = MAX(0, b - 1); bb < MIN(32, b + 1); bb++)
@@ -160,11 +161,9 @@ static inline int8_t fine_tune(int16_t dec, uint16_t x, uint16_t row)
             if (x >= CALIBRATION_FIRST_BAR_CHROMA_INDEX && x < CALIBRATION_FIRST_BAR_CHROMA_INDEX + 150)
             {
                 if (((x - CALIBRATION_FIRST_BAR_CHROMA_INDEX) % 10) < 8)
-                {
-
                     return update_if_valid(dec, x, row, col, 15);
-                }
-                return 0;
+                else
+                    return 0;
             }
         }
         else if (row >= 169 && row <= 258)
@@ -193,8 +192,6 @@ static inline int8_t fine_tune(int16_t dec, uint16_t x, uint16_t row)
     }
     return -1;
 }
-static bool err_draw = false;
-static bool fine_tuned = false;
 
 static inline void _log_error_value(int16_t dec, uint i, uint16_t row)
 {
@@ -205,14 +202,94 @@ static inline void _log_error_value(int16_t dec, uint i, uint16_t row)
     }
 }
 
-static inline void _save()
+static inline void failure(int errcode, int minor)
 {
+    sprintf(buf, "ERROR: ERR_%04X_%d", errcode, minor);
+    uart_log_putln(buf);
+    while (true)
+    {
+        sleep_ms(50);
+        uart_log_flush();
+    }
+}
+
+static __noinline int8_t _calculate_chroma_phase_adjust()
+{
+    uint16_t dec_tmp[4];
+    int8_t calib_data_adjustment = -1;
+    for (int i = 0; i < 4; i++)
+    {
+        uint16_t dec0 = decode_intr(chroma_buf[buf_seq][i + 4]);
+        sprintf(buf, " %04X %d.%d.%d ", dec0, DEC_F(dec0), DEC_A(dec0), DEC_B(dec0));
+        uart_log_putln(buf);
+        uart_log_flush();
+
+        dec_tmp[i] = dec0;
+    }
+    for (int i = 0; i < 4; i++)
+
+        if ((dec_tmp[i] & 1) == 0)
+        {
+            if (calib_data_adjustment == -1)
+            {
+                calib_data_adjustment = i;
+            }
+            else
+            {
+                // assertion error expected only one sample 0.A.B
+                failure(0xbadc, 1);
+            }
+        }
+
+    if (calib_data_adjustment == -1)
+    {
+        // assertion error expected only one sample 0.A.B
+        failure(0xbadc, 2);
+    }
+
+    sprintf(buf, "calculated adjustment: %d", calib_data_adjustment);
+    uart_log_putln(buf);
+
+    return calib_data_adjustment;
+}
+
+static __noinline void calibration_data_adjust(uint8_t adj)
+{
+    if (adj == 0)
+        return;
+
+    sprintf(buf, " applying chroma data phase shift adjustment: %d", adj);
+    uart_log_putln(buf);
+
+    uint8_t tmp[4];
+    for (int j = 0; j < 2; j++)
+        for (int k = 0; k < 2048; k++)
+        {
+            for (int i = 0; i < 4; i++)
+                tmp[i] = calibration_data[j][i][k];
+            for (int i = 0; i < 4; i++)
+                calibration_data[j][(i + adj) % 4][k] = tmp[i];
+        }
+    uart_log_putln(" adjustmend aplied");
+}
+
+static __noinline void _save()
+{
+    int8_t neg_adj = (4 - chroma_phase_adjust) % 4;
+    calibration_data_adjust(neg_adj);
+
     uart_log_putln("requesting calibration data save");
-    uart_log_flush_blocking();
+
     app_cfg.enableChroma = true;
     set_post_boot_action(WRITE_CONFIG);
     set_post_boot_action(WRITE_PRESET);
-    watchdog_enable(1, 1);
+    watchdog_enable(100, 1);
+
+    while (true)
+    {
+        uart_log_flush_blocking();
+        tight_loop_contents();
+    }
 }
 
 static inline void __not_in_flash_func(chroma_calibrate_step1)(uint16_t row)
@@ -286,7 +363,6 @@ static inline void __not_in_flash_func(chroma_calibrate_step1)(uint16_t row)
             if (sample == 0)
                 store_color_x(row, x, dec, BLACK);
 
-            // mapping[row % 2][x % 4][dec] = 0;
             plotf(x, y, BLACK);
         }
     }
@@ -316,11 +392,8 @@ static inline void __not_in_flash_func(chroma_calibrate_step1)(uint16_t row)
                             if (((i - CALIBRATION_FIRST_BAR_CHROMA_INDEX) % 10) < 8)
                             {
                                 if (col > 0 && col <= 15)
-                                    // store_color_x(row, i, dec, col);
                                     color_counts_add(row, i, col);
                             }
-                            //  else
-                            //       store_color_x(row, i, dec, BLACK);
                         }
                         else if (i == CALIBRATION_FIRST_BAR_CHROMA_INDEX - 1)
                         {
@@ -356,13 +429,11 @@ static inline void __not_in_flash_func(chroma_calibrate_step1)(uint16_t row)
 
 static inline void __not_in_flash_func(chroma_calibrate_step2)(uint16_t row)
 {
-
     err_draw = false;
-    if (row == 10)
-        fine_tuned = false;
 
     if (row == 10)
     {
+        fine_tuned = false;
         // draw progress bar
         plotf(8 + (sample_frame / 8), 270 + (sample_frame % 8), BLUE);
 

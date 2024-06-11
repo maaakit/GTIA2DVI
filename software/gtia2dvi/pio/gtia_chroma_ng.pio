@@ -1,32 +1,12 @@
 
 .program gtia_chroma_ng
-.define CSYNC_PIN  4
-.define OSC_PIN    5
-.define PAL_PIN    6
+.define CSYNC_PIN   4
+.define OSC_PIN     5
+.define PAL_PIN     6
 .define COLOR_PIN   7
 
 
 .define sample_size_bits 28
-
-; .wrap_target
-;     mov X OSR
-;     wait 1 irq 0
-; pixel_loop:
-;     set Y    ((sample_size_bits-3) - 1)
-;     wait 1 gpio OSC_PIN
-;     wait 0 gpio OSC_PIN ;[3]
-; bit_loop:
-;     in      pins 1   
-;     ;in      pins 1   
-
-;     jmp     Y-- bit_loop
-
-;     in      null 3 
-
-;     jmp     X-- pixel_loop
-
-; .wrap
-
 
 .wrap_target
     mov X OSR
@@ -40,9 +20,6 @@ bit_loop:
     in      pins 1   
 
     jmp     Y-- bit_loop
-
-    ; in      null 3 
-
     jmp     X-- pixel_loop
 
 .wrap
@@ -52,12 +29,12 @@ bit_loop:
 #include "hardware/clocks.h"
 #include "hardware/gpio.h"
 
-#define CSYNC_PIN 4
-#define OSC_PIN    5
-#define PAL_PIN    6
-#define COLOR_PIN   7
-#define CLK_DIVIDIER 1.0f 
-#define sample_size_bits 28
+#define CSYNC_PIN           4
+#define OSC_PIN             5
+#define PAL_PIN             6
+#define COLOR_PIN           7
+#define CLK_DIVIDIER        1.0f 
+#define sample_size_bits    28
 
 
 static inline void gtia_chroma_ng_program_init(uint sm, uint offset, uint32_t line_length_bytes) {

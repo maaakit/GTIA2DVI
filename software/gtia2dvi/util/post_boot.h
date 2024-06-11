@@ -30,8 +30,7 @@ void exec_post_boot_action()
 {
     if (checksum != calculate_checksum())
     {
-        uart_log_putln("checksum invalid");
-        sprintf(buf, "%d!=%d", checksum, calculate_checksum());
+        sprintf(buf, "  skipping! checksum invalid %X!=%X", checksum, calculate_checksum());
         uart_log_putln(buf);
         return;
     }

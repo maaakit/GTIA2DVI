@@ -13,6 +13,7 @@
 
 #define CHROMA_LINE_LENGTH 202
 
+int8_t chroma_phase_adjust = - 1;
 uint8_t buf_seq = 0;
 uint16_t frame_count = 0;
 uint32_t chroma_buf[2][CHROMA_LINE_LENGTH + 2];

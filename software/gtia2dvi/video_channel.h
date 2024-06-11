@@ -18,7 +18,6 @@
 
 #define LUMA_START_OFFSET 12
 
-
 uint16_t luma_buf[LUMA_LINE_LENGTH_BYTES / 2];
 
 static inline void _setup_gtia_interface()
@@ -56,6 +55,8 @@ static inline void _wait_and_restart_dma()
     // restart DMA channels
     dma_channel_set_write_addr(CHROMA_DMA_CHANNEL, &chroma_buf[buf_seq], true);
     dma_channel_set_write_addr(LUMA_DMA_CHANNEL, &luma_buf, true);
+
+    buf_seq = (buf_seq + 1) % 2;
 }
 
 #ifdef DUMP_PIXEL_FEATURE_ENABLED
@@ -121,7 +122,6 @@ static void __not_in_flash_func(_locate_and_dump_pixel_data)(uint16_t row)
 }
 #endif
 
-
 static inline int8_t match_color(int chroma_pos, int row)
 {
     uint32_t sample = chroma_buf[buf_seq][chroma_pos];
@@ -183,13 +183,44 @@ static inline void _draw_luma_only_row(uint16_t row)
     }
 }
 
+static inline void _prepare_calibration_data()
+{
+    int16_t row;
+    // wait at least one frame (for reset row counter)
+    for (int i = 0; i < 1000; i++)
+    {
+        _wait_and_restart_dma();
+    }
+
+    // wait for even row
+    do
+    {
+        _wait_and_restart_dma();
+        row = -luma_buf[0];
+    } while (row % 2);
+
+    // print starting sequence
+    sprintf(buf, "STARTING SEQ row: %d", row);
+    uart_log_putln(buf);
+
+    int8_t calib_data_adjustment = _calculate_chroma_phase_adjust();
+
+    chroma_phase_adjust = calib_data_adjustment;
+
+}
+
 void __not_in_flash_func(process_video_stream)()
 {
+    uint16_t row;
+
     chroma_hwd_init(true);
 
     _setup_gtia_interface();
 
-    uint16_t row;
+    _prepare_calibration_data();
+
+    calibration_data_adjust(chroma_phase_adjust);
+
     while (true)
     {
         enum BtnEvent btn = btn_last_event();
@@ -205,15 +236,11 @@ void __not_in_flash_func(process_video_stream)()
         }
 
         _wait_and_restart_dma();
-
-        // swap buffer
-        buf_seq = (buf_seq + 1) % 2;
-
         // pio returns line as negative number so we must correct this
         row = -luma_buf[0];
 
-
-        if (row == 8 || row ==9 ){
+        if (row == 8 || row == 9)
+        {
             burst_analyze(row);
         }
 
@@ -261,26 +288,22 @@ void __not_in_flash_func(calibrate_chroma)()
 
     _setup_gtia_interface();
 
+    _prepare_calibration_data();
+
     uint16_t row;
 
     while (true)
     {
         _wait_and_restart_dma();
 
-        buf_seq = (buf_seq + 1) % 2;
-
         row = -luma_buf[0];
         if (row == 10)
         {
             frame_count++;
         }
-        // if (row < FIRST_GTIA_ROW_TO_SHOW || row >= FIRST_GTIA_ROW_TO_SHOW + GTIA_ROWS_TO_SHOW)
-        // {
-        //     continue;
-        // }
+
         chroma_calibrate(row);
     }
 }
-
 
 #endif

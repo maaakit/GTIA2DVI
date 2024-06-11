@@ -67,12 +67,14 @@ int main()
 
 	uart_log_flush_blocking();
 
-	sleep_ms(500);
+	sleep_ms(200);
 	vreg_set_voltage(VREG_VSEL);
-	sleep_ms(500);
+	sleep_ms(200);
 
 	uart_log_putln("about to start dvi infrastructure");
 	uart_log_flush_blocking();
+
+	sleep_ms(100);
 	setup_display();
 
 	if (menu_requested || FORCE_MENU)

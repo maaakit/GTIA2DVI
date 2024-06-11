@@ -1,6 +1,8 @@
 #ifndef CHROMA_MAP_DIAGRAM_H
 #define CHROMA_MAP_DIAGRAM_H
 
+#include "chroma_calibration.h"
+
 #define MAP_DIAGRAM_BOX_SIZE 36
 #define MAP_DIAGRAM_OFFSET_X 240
 #define MAP_DIAGRAM_OFFSET_Y 16

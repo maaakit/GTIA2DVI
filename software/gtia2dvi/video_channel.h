@@ -205,21 +205,28 @@ static inline void _prepare_calibration_data()
 
     int8_t calib_data_adjustment = _calculate_chroma_phase_adjust();
 
-    chroma_phase_adjust = calib_data_adjustment;
+    if (calib_data_adjustment < 0 ){
+        // invalid adjustment. Switching to monochromatic mode
+        preset_loaded = false;
+        app_cfg.enableChroma = false;
+        return;
+    }
 
+    chroma_phase_adjust = calib_data_adjustment;
+    calibration_data_adjust(chroma_phase_adjust);
 }
 
 void __not_in_flash_func(process_video_stream)()
 {
     uint16_t row;
 
-    chroma_hwd_init(true);
+    chroma_hwd_init();
 
     _setup_gtia_interface();
 
-    _prepare_calibration_data();
-
-    calibration_data_adjust(chroma_phase_adjust);
+    if (preset_loaded){
+        _prepare_calibration_data();
+    }
 
     while (true)
     {
@@ -304,6 +311,36 @@ void __not_in_flash_func(calibrate_chroma)()
 
         chroma_calibrate(row);
     }
+}
+
+
+
+void __noinline __not_in_flash_func(pot_adjust)()
+{
+    uart_log_putln("starting pot adjustment");
+    chroma_hwd_init();
+
+    chroma_calibration_init();
+
+    _setup_gtia_interface();
+
+    uint16_t row;
+
+    while (true)
+    {
+        _wait_and_restart_dma();
+
+        row = -luma_buf[0];
+        if (row == 10)
+        {
+            frame_count++;
+        }
+
+        pot_adjust_row(row);
+    }
+
+
+
 }
 
 #endif

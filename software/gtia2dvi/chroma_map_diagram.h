@@ -4,7 +4,7 @@
 #include "chroma_calibration.h"
 
 #define MAP_DIAGRAM_BOX_SIZE 36
-#define MAP_DIAGRAM_OFFSET_X 240
+#define MAP_DIAGRAM_OFFSET_X 232
 #define MAP_DIAGRAM_OFFSET_Y 16
 
 static inline void update_mapping_diagram_c(int16_t dec, uint i, uint row, int col)

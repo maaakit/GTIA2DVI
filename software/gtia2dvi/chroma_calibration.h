@@ -202,17 +202,6 @@ static inline void _log_error_value(int16_t dec, uint i, uint16_t row)
     }
 }
 
-static inline void failure(int errcode, int minor)
-{
-    sprintf(buf, "ERROR: ERR_%04X_%d", errcode, minor);
-    uart_log_putln(buf);
-    while (true)
-    {
-        sleep_ms(50);
-        uart_log_flush();
-    }
-}
-
 static __noinline int8_t _calculate_chroma_phase_adjust()
 {
     uint16_t dec_tmp[4];
@@ -236,15 +225,20 @@ static __noinline int8_t _calculate_chroma_phase_adjust()
             }
             else
             {
-                // assertion error expected only one sample 0.A.B
-                failure(0xbadc, 1);
+                uint prev_a = DEC_A(dec_tmp[calib_data_adjustment]);
+                uint this_a = DEC_A(dec_tmp[i]);
+                if (this_a > prev_a)
+                {
+                    calib_data_adjustment = i;
+                }
             }
         }
 
     if (calib_data_adjustment == -1)
     {
         // assertion error expected only one sample 0.A.B
-        failure(0xbadc, 2);
+        uart_log_putln("unable to compute chroma phase adjustment");
+        return -1;
     }
 
     sprintf(buf, "calculated adjustment: %d", calib_data_adjustment);
@@ -302,8 +296,8 @@ static inline void __not_in_flash_func(chroma_calibrate_step1)(uint16_t row)
         if (sample_frame == SAMPLING_FRAMES)
         {
             processing = true;
-            sprintf(buf, "SMPL: %04x", current_sample);
-            UART_LOG_PUTLN(buf);
+            // sprintf(buf, "SMPL: %04x", current_sample);
+            // UART_LOG_PUTLN(buf);
         }
     }
 
@@ -320,7 +314,18 @@ static inline void __not_in_flash_func(chroma_calibrate_step1)(uint16_t row)
                 // update mapping diagram
                 update_mapping_diagram(current_sample);
                 color_counts_clear();
-                current_sample++;
+                int a, b;
+                do
+                {
+                    // draw progress bar
+                    plotf(8 + (current_sample / 8), 270 + (current_sample % 8), GREEN);
+                    
+                    current_sample++;
+                    // skip unexpected a and b values
+                    a = DEC_A(current_sample);
+                    b = DEC_B(current_sample);
+                } while (a + b > 28);
+
                 processing = false;
                 sample_frame = 0;
             }
@@ -333,8 +338,6 @@ static inline void __not_in_flash_func(chroma_calibrate_step1)(uint16_t row)
                 uart_log_flush_blocking();
             }
         }
-        // draw progress bar
-        plotf(8 + (current_sample / 8), 270 + (current_sample % 8), GREEN);
     }
 
     uint32_t y = row - FIRST_GTIA_ROW_TO_SHOW + SCREEN_OFFSET_Y;
@@ -504,6 +507,49 @@ static inline void __not_in_flash_func(chroma_calibrate)(uint16_t row)
         break;
     case SAVE:
         _save();
+    }
+}
+
+uint8_t pot_adjust_data[16 * 1024];
+
+static inline void __not_in_flash_func(pot_adjust_row)(uint16_t row)
+{
+
+    uint32_t y = row - FIRST_GTIA_ROW_TO_SHOW + SCREEN_OFFSET_Y;
+
+    if (row > 70 && row < 155)
+    {
+        for (int i = 0; i < 15; i++)
+        {
+            for (int j = 0; j < 8; j++)
+            {
+
+                int x = i * 10 + j + CALIBRATION_FIRST_BAR_CHROMA_INDEX;
+                uint sample = chroma_buf[buf_seq][x];
+                int dec = decode_intr(sample);
+                uint8_t col = i == 14 ? 0 : i;
+
+                int index = dec | ((row % 2) << 11) | ((x % 4) << 12);
+
+                uint diff = abs(pot_adjust_data[index] - col);
+
+                switch (diff)
+                {
+                case 0:
+                    plotf(x, y, 2);
+                    break;
+                case 1:
+                    plotf(x, y, 6);
+                    pot_adjust_data[index] = col;
+                    break;
+
+                default:
+                    plotf(x, y, YELLOW);
+                    pot_adjust_data[index] = col;
+                    break;
+                }
+            }
+        }
     }
 }
 

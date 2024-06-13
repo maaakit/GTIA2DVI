@@ -21,6 +21,7 @@ static char uart_8n1_buffer[UART_LOG_BUF_SIZE];
 
 static uint16_t uart_8n1_index_end = 0;
 static uint16_t uart_8n1_index_cur = 0;
+static int spinlock;
 
 char buf[1024];
 

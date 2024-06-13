@@ -13,6 +13,7 @@
 void luma_calibration();
 void calibration_diagram();
 void chroma_calibration();
+void pot_adjust_entry();
 void toggle_chroma_decode_val();
 void factory_reset();
 void save_config();
@@ -31,9 +32,10 @@ struct TextBox header = {
     .height = 32};
 
 struct MenuItem mainMenuItems[] = {
-    {"Chroma calibration", chroma_calibration},
     {"Chroma calibration done", calibration_diagram},
-    {"Chroma decode (experimental)", toggle_chroma_decode_val},
+    {"Chroma calibration", chroma_calibration},
+    {"Pot adjustment", pot_adjust_entry},
+    {"Enable chroma decode (experimental)", toggle_chroma_decode_val},
     {"Factory reset", factory_reset},
     {"Restart", force_restart},
     {"Save changes", save_config}};
@@ -65,7 +67,7 @@ static inline void redraw_main_menu()
 
 static inline void update_chroma_decode_value()
 {
-    set_pos(300, menu_item_pos_y(&mainMenu, 2));
+    set_pos(320, menu_item_pos_y(&mainMenu, 3));
     if (app_cfg.enableChroma)
         put_text("ON ");
     else
@@ -73,7 +75,7 @@ static inline void update_chroma_decode_value()
 }
 static inline void update_chroma_calibration_done_value()
 {
-    set_pos(300, menu_item_pos_y(&mainMenu, 1));
+    set_pos(320, menu_item_pos_y(&mainMenu, 0));
     if (preset_loaded)
         put_text("YES");
     else
@@ -125,15 +127,36 @@ void do_chroma_calibration()
 void calibration_diagram()
 {
     fill_scren(BLACK);
-    for(int dec=0; dec<2048; dec++){
+    for (int dec = 0; dec < 2048; dec++)
+    {
         update_mapping_diagram(dec);
     }
     while (true)
     {
         tight_loop_contents();
     }
-    
-}    
+}
+
+void pot_adjust_entry()
+{
+    fill_scren(BLACK);
+
+    text_block_init(20, 160, 40, 50);
+    text_block_println("Turn the potentiometer until the gray");
+    text_block_println("bands are at their sharpest.");
+    text_block_println("Find the position where yellow dots");
+    text_block_println("do not appear.");
+    text_block_println("Once you find the optimal position,");
+    text_block_println("press DVI_RESET.");
+
+    for (int y = 40; y < 50; y++)
+        for (int i = 0; i < 15; i++)
+            for (int j = 0; j < 8; j++)
+                plotf(i * 10 + j + CALIBRATION_FIRST_BAR_CHROMA_INDEX, y, ((i%14) + 1) * 16 + 6);
+
+    pot_adjust();
+}
+
 void chroma_calibration()
 {
     fill_scren(BLACK);

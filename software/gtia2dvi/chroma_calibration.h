@@ -6,6 +6,8 @@
 
 #define CALIBRATION_FIRST_BAR_CHROMA_INDEX 31
 #define SAMPLING_FRAMES 3
+#define STEP2_FRAMES 4096
+#define STEP2_LOG_ENABLED false
 
 enum calib_step
 {
@@ -21,6 +23,7 @@ uint32_t sample_frame = 0;
 bool processing = false;
 static bool err_draw = false;
 static bool fine_tuned = false;
+static uint8_t fine_tune_treshold = 1;
 int16_t color_counts[2][4][15];
 
 static inline void store_color_x(int row, int x, int16_t decode, int8_t color_index)
@@ -64,12 +67,14 @@ static inline void color_counts_process(int row, uint16_t current_sample)
 {
     int mod_row = row % 2;
     int mod_x = (row / 2) % 4;
-    int max_i = 0, max_cnt = 0;
+    int max_i = 0, max_cnt = 0, prev_i = 0, prev_cnt = 0;
 
     for (int i = 0; i < 15; i++)
     {
         if (color_counts[mod_row][mod_x][i] > max_cnt)
         {
+            prev_i = max_i;
+            prev_cnt = max_cnt;
             max_cnt = color_counts[mod_row][mod_x][i];
             max_i = i;
         }
@@ -77,6 +82,11 @@ static inline void color_counts_process(int row, uint16_t current_sample)
     if (max_i > 0)
     {
         store_color_x(mod_row, mod_x, current_sample, max_i);
+        if (prev_i > 0)
+            sprintf(buf, "s:%03X r:%d x:%d c:%d ~%d ALT:%d ~%d", current_sample, mod_row, mod_x, max_i, max_cnt, prev_i, prev_cnt);
+        else
+            sprintf(buf, "s:%03X r:%d x:%d c:%d ~%d", current_sample, mod_row, mod_x, max_i, max_cnt);
+        uart_log_putln(buf);
     }
 }
 
@@ -127,10 +137,20 @@ static inline int8_t __not_in_flash_func(update_if_valid)(int16_t dec, uint16_t 
         {
             store_color_x(row, x, dec, col);
             update_mapping_diagram_c(dec, x, row, col * 16 + 6);
+#if STEP2_LOG_ENABLED
+            sprintf(buf, "%03X %d.%d c:%d ADD", dec, x, row, col);
+            uart_log_putln(buf);
+#endif
             return col;
         }
         else
+        {
+#if STEP2_LOG_ENABLED
+            sprintf(buf, "%03X %d.%d c:%d t:%d BAD", dec, x, row, col, treshold);
+            uart_log_putln(buf);
+#endif
             return -1;
+        }
     }
     else
     {
@@ -146,7 +166,7 @@ static inline int8_t fine_tune(int16_t dec, uint16_t x, uint16_t row)
         if (row > 80 && row < 260)
         {
             int col = 1 + ((row - 80) / 12);
-            int valid = update_if_valid(dec, x, row, col, 15);
+            int valid = update_if_valid(dec, x, row, col, fine_tune_treshold);
             return valid;
         }
         return -1;
@@ -161,7 +181,7 @@ static inline int8_t fine_tune(int16_t dec, uint16_t x, uint16_t row)
             if (x >= CALIBRATION_FIRST_BAR_CHROMA_INDEX && x < CALIBRATION_FIRST_BAR_CHROMA_INDEX + 150)
             {
                 if (((x - CALIBRATION_FIRST_BAR_CHROMA_INDEX) % 10) < 8)
-                    return update_if_valid(dec, x, row, col, 15);
+                    return update_if_valid(dec, x, row, col, fine_tune_treshold);
                 else
                     return 0;
             }
@@ -180,12 +200,12 @@ static inline int8_t fine_tune(int16_t dec, uint16_t x, uint16_t row)
                 {
                     // strip
                     uint8_t col = 1 + (px / 4);
-                    return update_if_valid(dec, x, row, col, 1);
+                    return update_if_valid(dec, x, row, col, fine_tune_treshold);
                 }
                 else
                 {
                     uint8_t col = 1 + ((row - 169) / 6);
-                    return update_if_valid(dec, x, row, col, 1);
+                    return update_if_valid(dec, x, row, col, fine_tune_treshold);
                 }
             }
         }
@@ -296,9 +316,11 @@ static inline void __not_in_flash_func(chroma_calibrate_step1)(uint16_t row)
         if (sample_frame == SAMPLING_FRAMES)
         {
             processing = true;
-            // sprintf(buf, "SMPL: %04x", current_sample);
-            // UART_LOG_PUTLN(buf);
         }
+    }
+
+    if (row == 100 && current_sample ==10 ){
+        __breakpoint();
     }
 
     if (processing == true)
@@ -319,7 +341,7 @@ static inline void __not_in_flash_func(chroma_calibrate_step1)(uint16_t row)
                 {
                     // draw progress bar
                     plotf(8 + (current_sample / 8), 270 + (current_sample % 8), GREEN);
-                    
+
                     current_sample++;
                     // skip unexpected a and b values
                     a = DEC_A(current_sample);
@@ -436,11 +458,12 @@ static inline void __not_in_flash_func(chroma_calibrate_step2)(uint16_t row)
 
     if (row == 10)
     {
+        fine_tune_treshold = (sample_frame / 1024) + 1;
         fine_tuned = false;
         // draw progress bar
-        plotf(8 + (sample_frame / 8), 270 + (sample_frame % 8), BLUE);
+        plotf(8 + (sample_frame / (STEP2_FRAMES / 2048) / 8), 270 + (sample_frame % 8), BLUE);
 
-        if (sample_frame == 2048)
+        if (sample_frame == STEP2_FRAMES)
         {
             c_step = SAVE;
             return;
@@ -449,6 +472,8 @@ static inline void __not_in_flash_func(chroma_calibrate_step2)(uint16_t row)
     }
 
     uint32_t y = row - FIRST_GTIA_ROW_TO_SHOW + SCREEN_OFFSET_Y;
+
+    int16_t fine_tune_start_row = (sample_frame % 200) + 66;
 
     if (row > 66 && row < 266)
     {
@@ -466,7 +491,7 @@ static inline void __not_in_flash_func(chroma_calibrate_step2)(uint16_t row)
             else if (col > 15 || col < 0)
             // color not mapped
             {
-                if (fine_tuned == false)
+                if (fine_tuned == false && fine_tune_start_row < row)
                 {
                     fine_tuned = true;
                     col = fine_tune(dec, i, row);
@@ -478,6 +503,7 @@ static inline void __not_in_flash_func(chroma_calibrate_step2)(uint16_t row)
                     }
                     else
                     {
+                        //   fine_tune_start_row = row == 265 ? 0 : row + 1;
                         plotf(i, y, YELLOW);
                         _log_error_value(dec, i, row);
                     }

@@ -1,9 +1,10 @@
+#include "pico/multicore.h"
 
 #ifndef UART_LOG_H
 #define UART_LOG_H
 
-#define UART_LOG_BUF_SIZE 128
-#define UART_LOG_SERIAL_BAUD 230400 
+#define UART_LOG_BUF_SIZE 1024
+#define UART_LOG_SERIAL_BAUD 230400
 
 #define UART_RX_PIN 9
 #define UART_TX_PIN 8
@@ -21,15 +22,16 @@ static char uart_8n1_buffer[UART_LOG_BUF_SIZE];
 
 static uint16_t uart_8n1_index_end = 0;
 static uint16_t uart_8n1_index_cur = 0;
-static int spinlock;
+static spin_lock_t *uart_spin_lock;
 
-char buf[1024];
+char buf[256];
 
 static inline void uart_log_init()
 {
     uart_init(UART_ID, UART_LOG_SERIAL_BAUD);
     gpio_set_function(UART_TX_PIN, GPIO_FUNC_UART);
     gpio_set_function(UART_RX_PIN, GPIO_FUNC_UART);
+    uart_spin_lock = spin_lock_instance(spin_lock_claim_unused(true));
 }
 
 static inline void uart_update_clkdiv()
@@ -48,17 +50,23 @@ static inline char __not_in_flash_func(get_char)()
 
 static inline void __not_in_flash_func(uart_log_flush)()
 {
+    if (is_spin_locked(uart_spin_lock))
+    {
+        return;
+    }
 
+    int save = spin_lock_blocking(uart_spin_lock);
     while (uart_8n1_index_end != uart_8n1_index_cur)
     {
         if (!uart_is_writable(UART_ID))
-            return;
+            break;
 
         uart_putc(UART_ID, uart_8n1_buffer[uart_8n1_index_cur++]);
 
         if (uart_8n1_index_cur == UART_LOG_BUF_SIZE)
             uart_8n1_index_cur = 0;
     }
+    spin_unlock(uart_spin_lock, save);
 }
 
 static inline void __not_in_flash_func(uart_log_flush_blocking)()
@@ -71,6 +79,7 @@ static inline void __not_in_flash_func(uart_log_flush_blocking)()
 
 static inline void __not_in_flash_func(uart_log_put)(char *s)
 {
+    int save = spin_lock_blocking(uart_spin_lock);
     while (*s)
     {
         uart_8n1_buffer[uart_8n1_index_end++] = *s++;
@@ -79,6 +88,7 @@ static inline void __not_in_flash_func(uart_log_put)(char *s)
             uart_8n1_index_end = 0;
         }
     }
+    spin_unlock(uart_spin_lock, save);
 }
 static __noinline void __not_in_flash_func(uart_log_putln)(char *s)
 {

@@ -8,6 +8,7 @@
 #define SAMPLING_FRAMES 3
 #define STEP2_FRAMES 2048
 #define STEP2_LOG_ENABLED true
+#define CALIB_FINE_TUNE_TRESHOLD 2
 
 #define ATARI_BASIC_ROW(y) ((y) - 69)
 #define ATARI_BASIC_COLUMN(x) ((x) - app_cfg.chroma_calib_offset)
@@ -24,13 +25,10 @@ enum calib_step c_step = GEOMETRY_CHECK;
 
 uint16_t current_sample = 0;
 uint32_t sample_frame = 0;
-bool processing = false;
+
 static bool err_draw = false;
-static bool fine_tuned = false;
-static uint8_t fine_tune_treshold = 2;
+
 int16_t color_counts[2][4][15];
-uint8_t pot_adjust_data[16 * 1024];
-static int chroma_calib_offset_tmp = -1;
 
 static inline void store_color(int row, int x, int16_t decode, int8_t color_index)
 {
@@ -166,9 +164,8 @@ static inline int8_t fine_tune(int16_t dec, uint16_t x, uint16_t row)
     {
         if (ATARI_BASIC_ROW(row) >= 12 && ATARI_BASIC_ROW(row) < 180)
         {
-            //      __breakpoint();
             int col = 1 + ((row - 80) / 12);
-            int valid = update_if_valid(dec, x, row, col, fine_tune_treshold);
+            int valid = update_if_valid(dec, x, row, col, CALIB_FINE_TUNE_TRESHOLD);
             return valid;
         }
         return -1;
@@ -184,7 +181,7 @@ static inline int8_t fine_tune(int16_t dec, uint16_t x, uint16_t row)
             if (atari_column >= 0 && atari_column < 150)
             {
                 if ((atari_column % 10) < 8)
-                    return update_if_valid(dec, x, row, col, fine_tune_treshold);
+                    return update_if_valid(dec, x, row, col, CALIB_FINE_TUNE_TRESHOLD);
                 else
                     return 0;
             }
@@ -199,16 +196,16 @@ static inline int8_t fine_tune(int16_t dec, uint16_t x, uint16_t row)
 
             if (px < 60)
             {
-                if (px & 0x3 < 2)
+                if ((px & 0x3) < 2)
                 {
                     // strip
                     uint8_t col = 1 + (px / 4);
-                    return update_if_valid(dec, x, row, col, fine_tune_treshold);
+                    return update_if_valid(dec, x, row, col, CALIB_FINE_TUNE_TRESHOLD);
                 }
                 else
                 {
                     uint8_t col = 1 + ((ATARI_BASIC_ROW(row) - 100) / 6);
-                    return update_if_valid(dec, x, row, col, fine_tune_treshold);
+                    return update_if_valid(dec, x, row, col, CALIB_FINE_TUNE_TRESHOLD);
                 }
             }
         }
@@ -309,7 +306,7 @@ static __noinline void _save()
     }
 }
 
-static inline void process_registered_chroma_data(uint16_t row)
+static inline bool process_registered_chroma_data(uint16_t row)
 {
     if (row >= 2 && row <= 9)
         color_counts_process(row, current_sample);
@@ -331,9 +328,8 @@ static inline void process_registered_chroma_data(uint16_t row)
                 a = DEC_A(current_sample);
                 b = DEC_B(current_sample);
             } while (a + b > 28);
-
-            processing = false;
             sample_frame = 0;
+            return false;
         }
         else
         {
@@ -344,10 +340,13 @@ static inline void process_registered_chroma_data(uint16_t row)
             uart_log_flush_blocking();
         }
     }
+    return true;
 }
 
 static inline void __not_in_flash_func(chroma_calibrate_step1)(uint16_t row)
 {
+    static bool processing = false;
+
     err_draw = false;
 
     if (row == 1)
@@ -358,7 +357,7 @@ static inline void __not_in_flash_func(chroma_calibrate_step1)(uint16_t row)
     }
 
     if (processing == true)
-        process_registered_chroma_data(row);
+        processing = process_registered_chroma_data(row);
 
     uint32_t y = row - FIRST_GTIA_ROW_TO_SHOW + SCREEN_OFFSET_Y;
 
@@ -393,7 +392,6 @@ static inline void __not_in_flash_func(chroma_calibrate_step1)(uint16_t row)
                     if (dec == current_sample)
                     {
                         int atari_column = i - app_cfg.chroma_calib_offset;
-
                         uint8_t col = 1 + atari_column / 10;
                         if (col == 15)
                             col = 1;
@@ -413,7 +411,6 @@ static inline void __not_in_flash_func(chroma_calibrate_step1)(uint16_t row)
             else if (dec < current_sample)
             {
                 int8_t col = calibration_data[row % 2][i & 0x3][dec];
-
                 if (col == 0)
                     // mapped black
                     plotf(i, y, BLACK);
@@ -434,7 +431,6 @@ static inline void __not_in_flash_func(chroma_calibrate_step1)(uint16_t row)
     }
     // map black color
     if (ATARI_BASIC_ROW(row) > 192 && ATARI_BASIC_ROW(row) < 200)
-    {
         for (int x = 32; x < 64; x++)
         {
             uint sample = chroma_buf[buf_seq][x];
@@ -442,11 +438,13 @@ static inline void __not_in_flash_func(chroma_calibrate_step1)(uint16_t row)
             if (sample == 0)
                 store_color(row, x, dec, BLACK);
         }
-    }
 }
 
 static inline void __not_in_flash_func(chroma_calibrate_step2)(uint16_t row)
 {
+    static bool extended = false;
+    static bool fine_tuned = false;
+
     err_draw = false;
 
     if (row == 10)
@@ -455,11 +453,25 @@ static inline void __not_in_flash_func(chroma_calibrate_step2)(uint16_t row)
         // draw progress bar
         plotf(8 + (sample_frame / (STEP2_FRAMES / 2048) / 8), 270 + (sample_frame % 8), BLUE);
 
-        if (sample_frame == STEP2_FRAMES)
+        if (sample_frame < STEP2_FRAMES)
         {
+            if (extended == false && btn_is_down(BTN_B))
+            {
+                extended = true;
+                uart_log_putln("extended calibration enabled");
+            }
+        }
+
+        if (sample_frame > STEP2_FRAMES && (btn_is_down(BTN_B) || extended == false))
+        {
+            uart_log_putln("calibration finished");
             c_step = SAVE;
             return;
         }
+
+        if (extended && (sample_frame & 0xf) == 0)
+            gpio_xor_mask(1 << 25);
+
         sample_frame++;
     }
 
@@ -533,6 +545,8 @@ static inline void calib_error(char *msg, char *uartmsg)
 
 static inline void __not_in_flash_func(geometry_check)(uint16_t row)
 {
+    static int chroma_calib_offset_tmp = -1;
+
     if (row == 310)
     {
         sample_frame++;
@@ -601,6 +615,8 @@ static inline void __not_in_flash_func(chroma_calibrate)(uint16_t row)
 
 static inline void __not_in_flash_func(pot_adjust_row)(uint16_t row)
 {
+    static uint8_t pot_adjust_data[16 * 1024];
+
     uint32_t y = row - FIRST_GTIA_ROW_TO_SHOW + SCREEN_OFFSET_Y;
     const int offset = app_cfg.chroma_calib_offset ? app_cfg.chroma_calib_offset : CALIBRATION_FIRST_BAR_CHROMA_INDEX;
 

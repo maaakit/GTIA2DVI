@@ -13,7 +13,7 @@ static inline void update_mapping_diagram_c(int16_t dec, uint i, uint row, int c
     int a = (dec >> 1) & 0x1f;
     int b = (dec >> 6) & 0x1f;
 
-    plotf(MAP_DIAGRAM_OFFSET_X + (i % 4) * MAP_DIAGRAM_BOX_SIZE + a, MAP_DIAGRAM_OFFSET_Y + (row % 2) * MAP_DIAGRAM_BOX_SIZE + (f * MAP_DIAGRAM_BOX_SIZE * 2) + b, col);
+    plotf(MAP_DIAGRAM_OFFSET_X + (i & 0x3) * MAP_DIAGRAM_BOX_SIZE + a, MAP_DIAGRAM_OFFSET_Y + (row % 2) * MAP_DIAGRAM_BOX_SIZE + (f * MAP_DIAGRAM_BOX_SIZE * 2) + b, col);
 }
 
 static inline void update_mapping_diagram_err(int16_t dec, uint i, uint row)

@@ -1,3 +1,4 @@
+#include "util/uart_log.h"
 
 #ifndef CFG_H
 #define CFG_H
@@ -37,6 +38,14 @@ void cfg_init()
 {
     app_cfg.enableChroma = false;
     app_cfg.chroma_calib_offset = 0;
+}
+
+void cfg_log_to_uart()
+{
+    uart_log_putlnf("current config:");
+    uart_log_putlnf("  enableChroma: %d", app_cfg.enableChroma);
+    uart_log_putlnf("  chroma_calib_offset: %d", app_cfg.chroma_calib_offset);
+    uart_log_flush_blocking();
 }
 
 bool preset_loaded = false;

@@ -14,7 +14,7 @@
 #define PIO_LUMA pio1
 #define LUMA_DMA_CHANNEL 10
 #define CHROMA_DMA_CHANNEL 11
-#define LUMA_LINE_LENGTH_BYTES 202
+#define LUMA_LINE_LENGTH_BYTES 206
 
 #define LUMA_START_OFFSET 12
 
@@ -122,46 +122,50 @@ static void __not_in_flash_func(_locate_and_dump_pixel_data)(uint16_t row)
 }
 #endif
 
-static inline int8_t match_color(int chroma_pos, int row)
+static inline int8_t match_color(const uint32_t *chromabuf, const int8_t (*calib_data_ptr)[4][2048])
 {
-    uint32_t sample = chroma_buf[buf_seq][chroma_pos];
+    uint32_t sample = *chromabuf;
     int dec = decode_intr(sample);
-    int col = calibration_data[row % 2][chroma_pos % 4][dec];
+    // requires chromabuf to be 16 bytes aligned!
+    int col = (*calib_data_ptr)[((int)chromabuf >> 2) & 0x03][dec];
     if (col < 0)
         col = 0;
     return col;
 }
 
-static inline void _draw_luma_and_chroma_row(uint16_t row)
+static void __no_inline_not_in_flash_func(_draw_luma_and_chroma_row)(uint32_t row)
 {
-    uint16_t x = SCREEN_OFFSET_X;
-    uint16_t y = row - FIRST_GTIA_ROW_TO_SHOW + SCREEN_OFFSET_Y;
+    const uint16_t dvi_y = row - FIRST_GTIA_ROW_TO_SHOW + SCREEN_OFFSET_Y;
 
-    if (y == scanline || y + 1 == scanline)
+    if (dvi_y == scanline || dvi_y + 1 == scanline)
     {
         // don't modify line which is currently transferred to TDMS pipeline
         return;
     }
 
-    uint cpos = 22;
-    int col = 0;
+    const uint cpos = app_cfg.chroma_calib_offset - 8;
+    const int8_t(*calib_data_ptr)[4][2048] = &calibration_data[row % 2];
+
+    int gtia_color = 0;
+    uint dvi_x = SCREEN_OFFSET_X;
+    uint32_t *chroma_buf_ptr = &chroma_buf[buf_seq][cpos];
 
     for (uint16_t i = LUMA_START_OFFSET; i < (LUMA_LINE_LENGTH_BYTES / 2); i++)
     {
-        uint16_t c = luma_buf[i];
-        uint8_t luma = c & 0xf;
-        plotf(x++, y, col * 16 + luma);
+        uint16_t luma4px = luma_buf[i];
+        uint8_t pixel_luma = luma4px & 0xf;
+        plotf(dvi_x++, dvi_y, gtia_color * 16 + pixel_luma);
 
-        col = match_color(cpos++, row);
-        luma = (c >> 4) & 0xf;
-        plotf(x++, y, col * 16 + luma);
+        gtia_color = match_color(chroma_buf_ptr++, calib_data_ptr);
+        pixel_luma = (luma4px >> 4) & 0xf;
+        plotf(dvi_x++, dvi_y, gtia_color * 16 + pixel_luma);
 
-        luma = (c >> 8) & 0xf;
-        plotf(x++, y, col * 16 + luma);
+        pixel_luma = (luma4px >> 8) & 0xf;
+        plotf(dvi_x++, dvi_y, gtia_color * 16 + pixel_luma);
 
-        col = match_color(cpos++, row);
-        luma = (c >> 12) & 0xf;
-        plotf(x++, y, col * 16 + luma);
+        gtia_color = match_color(chroma_buf_ptr++, calib_data_ptr);
+        pixel_luma = (luma4px >> 12) & 0xf;
+        plotf(dvi_x++, dvi_y, gtia_color * 16 + pixel_luma);
     }
 }
 
@@ -192,12 +196,12 @@ static inline void _prepare_calibration_data()
         _wait_and_restart_dma();
     }
 
-    // wait for even row
+    // wait for even row larger than 10
     do
     {
         _wait_and_restart_dma();
         row = -luma_buf[0];
-    } while (row % 2);
+    } while (row % 2 || row < 10);
 
     // print starting sequence
     sprintf(buf, "STARTING SEQ row: %d", row);
@@ -205,7 +209,8 @@ static inline void _prepare_calibration_data()
 
     int8_t calib_data_adjustment = _calculate_chroma_phase_adjust();
 
-    if (calib_data_adjustment < 0 ){
+    if (calib_data_adjustment < 0)
+    {
         // invalid adjustment. Switching to monochromatic mode
         preset_loaded = false;
         app_cfg.enableChroma = false;
@@ -224,7 +229,8 @@ void __not_in_flash_func(process_video_stream)()
 
     _setup_gtia_interface();
 
-    if (preset_loaded){
+    if (preset_loaded)
+    {
         _prepare_calibration_data();
     }
 
@@ -313,8 +319,6 @@ void __not_in_flash_func(calibrate_chroma)()
     }
 }
 
-
-
 void __noinline __not_in_flash_func(pot_adjust)()
 {
     uart_log_putln("starting pot adjustment");
@@ -338,9 +342,6 @@ void __noinline __not_in_flash_func(pot_adjust)()
 
         pot_adjust_row(row);
     }
-
-
-
 }
 
 #endif

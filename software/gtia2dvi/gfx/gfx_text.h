@@ -3,6 +3,9 @@
 #include <stdlib.h>
 #include "gfx.h"
 
+#ifndef GFX_TXT_H
+#define GFX_TXT_H
+
 static inline void put_char(char ascii)
 {
     if (ascii < FONT_FIRST_CHAR || ascii > (FONT_FIRST_CHAR + FONT_CHARS_NUMBER))
@@ -118,3 +121,5 @@ static inline void text_block_println(char *str)
     text_block_print(str);
     text_block_print("\r\n");
 }
+
+#endif

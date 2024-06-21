@@ -149,10 +149,12 @@ void pot_adjust_entry()
     text_block_println("Once you find the optimal position,");
     text_block_println("press DVI_RESET.");
 
+    const int offset = app_cfg.chroma_calib_offset ? app_cfg.chroma_calib_offset : CALIBRATION_FIRST_BAR_CHROMA_INDEX;
+
     for (int y = 40; y < 50; y++)
         for (int i = 0; i < 15; i++)
             for (int j = 0; j < 8; j++)
-                plotf(i * 10 + j + CALIBRATION_FIRST_BAR_CHROMA_INDEX, y, ((i%14) + 1) * 16 + 6);
+                plotf(i * 10 + j + offset, y, ((i%14) + 1) * 16 + 6);
 
     pot_adjust();
 }

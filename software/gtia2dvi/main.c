@@ -45,11 +45,13 @@ int main()
 	{
 		uart_log_putln("config loaded");
 		flash_load_config(&app_cfg);
+		cfg_log_to_uart();
 	}
 	else
 	{
 		uart_log_putln("using default config");
 		cfg_init();
+		cfg_log_to_uart();
 	}
 
 

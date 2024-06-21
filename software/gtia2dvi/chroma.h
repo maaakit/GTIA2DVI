@@ -6,7 +6,6 @@
 #include "chroma_trans_table.h"
 #include "util/flash_storage.h"
 #include "util/post_boot.h"
-#include "uart_dump.h"
 
 #ifndef CHROMA_H
 #define CHROMA_H

@@ -1,5 +1,4 @@
 #include "../gfx/gfx_text.h"
-#include "../gfx/gfx.h"
 
 #define CHOOSEN_OPTION_COLOR GREEN
 #define ACTIVE_OPTION_COLOR WHITE

@@ -20,9 +20,12 @@
 #define INVALID_CHROMA_HANDLER (luma)
 // #define INVALID_CHROMA_HANDLER (YELLOW)
 
+#define CALIBRATION_FIRST_BAR_CHROMA_INDEX 31
+
 struct AppConfig
 {
     bool enableChroma;
+    uint chroma_calib_offset;
     uint32_t pad;
 };
 
@@ -33,6 +36,7 @@ struct AppConfig app_cfg __attribute__((section(".uninitialized_data")));
 void cfg_init()
 {
     app_cfg.enableChroma = false;
+    app_cfg.chroma_calib_offset = 0;
 }
 
 bool preset_loaded = false;

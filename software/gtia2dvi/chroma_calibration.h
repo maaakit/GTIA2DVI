@@ -5,7 +5,7 @@
 #include "chroma.h"
 #include "chroma_map_diagram.h"
 
-#define SAMPLING_FRAMES 3
+#define SAMPLING_FRAMES 5
 #define STEP2_FRAMES 2048
 #define STEP2_LOG_ENABLED true
 #define CALIB_FINE_TUNE_TRESHOLD 2
@@ -176,14 +176,14 @@ static inline int8_t fine_tune(int16_t dec, uint16_t x, uint16_t row)
         if (ATARI_BASIC_ROW(row) >= 0 && ATARI_BASIC_ROW(row) < 90)
         {
 
-            uint8_t col = 1 + atari_column / 10;
+            uint8_t col = 1 + ATARI_BASIC_ROW(row) / 6;
 
-            if (atari_column >= 0 && atari_column < 150)
+            if (atari_column >= 0 && atari_column < 120)
             {
-                if ((atari_column % 10) < 8)
+               // if ((atari_column % 10) < 8)
                     return update_if_valid(dec, x, row, col, CALIB_FINE_TUNE_TRESHOLD);
-                else
-                    return 0;
+                // else
+                //     return 0;
             }
         }
         else if (ATARI_BASIC_ROW(row) >= 100 && ATARI_BASIC_ROW(row) < 192)
@@ -392,17 +392,17 @@ static inline void __not_in_flash_func(chroma_calibrate_step1)(uint16_t row)
                     if (dec == current_sample)
                     {
                         int atari_column = i - app_cfg.chroma_calib_offset;
-                        uint8_t col = 1 + atari_column / 10;
+                        uint8_t col = 1 + ATARI_BASIC_ROW(row) / 6;
                         if (col == 15)
                             col = 1;
 
-                        if (atari_column >= 0 && atari_column < 150)
+                        if (atari_column >= 0 && atari_column < 120)
                         {
-                            if ((atari_column % 10) < 8)
-                            {
+                            // if ((atari_column % 10) < 8)
+                            // {
                                 if (col > 0 && col <= 15)
                                     color_counts_add(row, i, col);
-                            }
+                         //   }
                         }
                     }
                 }

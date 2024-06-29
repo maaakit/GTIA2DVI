@@ -4,6 +4,7 @@
 #include "../util/buttons.h"
 #include "../util/post_boot.h"
 #include "../video_channel.h"
+#include "../git_info.h"
 
 #define MENU_BOX_X 8
 #define MENU_BOX_Y 6
@@ -63,6 +64,9 @@ static inline void redraw_main_menu()
     set_pos(mainMenu.posX, mainMenu.posY - 12);
     put_text("Main menu");
     draw_menu(&mainMenu);
+
+    set_pos(10, 240);
+    put_text(get_commit_info(buf,128));
 }
 
 static inline void update_chroma_decode_value()
@@ -154,7 +158,7 @@ void pot_adjust_entry()
     for (int y = 40; y < 50; y++)
         for (int i = 0; i < 15; i++)
             for (int j = 0; j < 8; j++)
-                plotf(i * 10 + j + offset, y, ((i%14) + 1) * 16 + 6);
+                plotf(i * 10 + j + offset, y, ((i % 14) + 1) * 16 + 6);
 
     pot_adjust();
 }

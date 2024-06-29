@@ -2,3 +2,4 @@
 build/*
 .idea/*
 *.iml
+software/gtia2dvi/git_info.h

@@ -175,16 +175,9 @@ static inline int8_t fine_tune(int16_t dec, uint16_t x, uint16_t row)
         // vertical lines of solid colors on top part of screen
         if (ATARI_BASIC_ROW(row) >= 0 && ATARI_BASIC_ROW(row) < 90)
         {
-
             uint8_t col = 1 + ATARI_BASIC_ROW(row) / 6;
-
             if (atari_column >= 0 && atari_column < 120)
-            {
-               // if ((atari_column % 10) < 8)
-                    return update_if_valid(dec, x, row, col, CALIB_FINE_TUNE_TRESHOLD);
-                // else
-                //     return 0;
-            }
+                return update_if_valid(dec, x, row, col, CALIB_FINE_TUNE_TRESHOLD);
         }
         else if (ATARI_BASIC_ROW(row) >= 100 && ATARI_BASIC_ROW(row) < 192)
         {
@@ -397,13 +390,8 @@ static inline void __not_in_flash_func(chroma_calibrate_step1)(uint16_t row)
                             col = 1;
 
                         if (atari_column >= 0 && atari_column < 120)
-                        {
-                            // if ((atari_column % 10) < 8)
-                            // {
-                                if (col > 0 && col <= 15)
-                                    color_counts_add(row, i, col);
-                         //   }
-                        }
+                            if (col > 0 && col <= 15)
+                                color_counts_add(row, i, col);
                     }
                 }
             }

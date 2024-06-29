@@ -1,4 +1,14 @@
 
+set(BUILD_DIR "${CMAKE_BINARY_DIR}/gtia2dvi")
+
+if(EXISTS "${BUILD_DIR}")
+	# Usuń zawartość katalogu build
+	file(REMOVE_RECURSE "${BUILD_DIR}")
+else()
+	message(WARNING "Build directory does not exist: ${BUILD_DIR}")
+endif()
+
+
 # Pobierz skrót commita
 execute_process(
   COMMAND git rev-parse --short HEAD
@@ -27,14 +37,6 @@ if(GIT_MODIFIED EQUAL "1")
   set(OUTPUT_NAME "${OUTPUT_NAME}_dirty")
 endif()
 
-set(BUILD_DIR "${CMAKE_BINARY_DIR}/gtia2dvi")
-
-if(EXISTS "${BUILD_DIR}")
-	# Usuń zawartość katalogu build
-	file(REMOVE_RECURSE "${BUILD_DIR}")
-else()
-	message(WARNING "Build directory does not exist: ${BUILD_DIR}")
-endif()
 
 # Replace TMDS with 10 bit UART (same baud rate):
 # add_definitions(-DDVI_SERIAL_DEBUG=1)

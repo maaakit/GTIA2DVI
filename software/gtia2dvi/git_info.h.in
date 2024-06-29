@@ -1,0 +1,14 @@
+// git_info.h.in
+#ifndef GIT_INFO_H
+#define GIT_INFO_H
+
+#define GIT_COMMIT_HASH "@GIT_COMMIT_HASH@"
+#define GIT_MODIFIED "@GIT_MODIFIED@"
+
+static inline char* get_commit_info(char *buffer, size_t buffer_size)
+{
+    snprintf(buffer, buffer_size, "commit: %s %s", GIT_COMMIT_HASH, GIT_MODIFIED[0] == '1' ? "dirty" : "");
+    return buffer;
+}
+
+#endif // GIT_INFO_H

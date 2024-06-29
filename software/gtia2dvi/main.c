@@ -11,6 +11,7 @@
 #include "util/post_boot.h"
 #include "util/uart_log.h"
 #include "gtia_dump.h"
+#include "git_info.h"
 
 int main()
 {
@@ -22,6 +23,7 @@ int main()
 	uart_log_putln("/---------------\\");
 	uart_log_putln("| GTIA2DVI_PICO |");
 	uart_log_putln("\\---------------/");
+	uart_log_putln(get_commit_info(buf, 128));
 	uart_log_putln("starting");
 	uart_log_putln("about to exec post boot action");
 	uart_log_flush_blocking();
@@ -53,7 +55,6 @@ int main()
 		cfg_init();
 		cfg_log_to_uart();
 	}
-
 
 	if (flash_preset_saved())
 	{

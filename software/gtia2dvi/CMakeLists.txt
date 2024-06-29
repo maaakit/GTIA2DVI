@@ -3,11 +3,10 @@ set(BUILD_DIR "${CMAKE_BINARY_DIR}/gtia2dvi")
 
 if(EXISTS "${BUILD_DIR}")
 	# Usuń zawartość katalogu build
-	file(REMOVE_RECURSE "${BUILD_DIR}")
+	file(REMOVE_RECURSE "${BUILD_DIR}/gtia2dvi_*.*")
 else()
 	message(WARNING "Build directory does not exist: ${BUILD_DIR}")
 endif()
-
 
 # Pobierz skrót commita
 execute_process(

@@ -8,7 +8,7 @@
 #define SAMPLING_FRAMES 3
 #define STEP2_FRAMES 2048
 #define STEP2_LOG_ENABLED true
-#define CALIB_FINE_TUNE_TRESHOLD 2
+#define CALIB_FINE_TUNE_THRESHOLD 2
 
 #define ATARI_BASIC_ROW(y) ((y) - 69)
 #define ATARI_BASIC_COLUMN(x) ((x) - app_cfg.chroma_calib_offset)
@@ -165,7 +165,7 @@ static inline int8_t fine_tune(int16_t dec, uint16_t x, uint16_t row)
         if (ATARI_BASIC_ROW(row) >= 12 && ATARI_BASIC_ROW(row) < 180)
         {
             int col = 1 + ((row - 80) / 12);
-            int valid = update_if_valid(dec, x, row, col, CALIB_FINE_TUNE_TRESHOLD);
+            int valid = update_if_valid(dec, x, row, col, CALIB_FINE_TUNE_THRESHOLD);
             return valid;
         }
         return -1;
@@ -181,7 +181,7 @@ static inline int8_t fine_tune(int16_t dec, uint16_t x, uint16_t row)
             if (atari_column >= 0 && atari_column < 150)
             {
                 if ((atari_column % 10) < 8)
-                    return update_if_valid(dec, x, row, col, CALIB_FINE_TUNE_TRESHOLD);
+                    return update_if_valid(dec, x, row, col, CALIB_FINE_TUNE_THRESHOLD);
                 else
                     return 0;
             }
@@ -200,12 +200,12 @@ static inline int8_t fine_tune(int16_t dec, uint16_t x, uint16_t row)
                 {
                     // strip
                     uint8_t col = 1 + (px / 4);
-                    return update_if_valid(dec, x, row, col, CALIB_FINE_TUNE_TRESHOLD);
+                    return update_if_valid(dec, x, row, col, CALIB_FINE_TUNE_THRESHOLD);
                 }
                 else
                 {
                     uint8_t col = 1 + ((ATARI_BASIC_ROW(row) - 100) / 6);
-                    return update_if_valid(dec, x, row, col, CALIB_FINE_TUNE_TRESHOLD);
+                    return update_if_valid(dec, x, row, col, CALIB_FINE_TUNE_THRESHOLD);
                 }
             }
         }

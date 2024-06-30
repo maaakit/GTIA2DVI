@@ -24,7 +24,7 @@ static void __not_in_flash("set_pos") set_pos(uint16_t x, uint16_t y)
 
 uint8_t framebuf[FRAME_WIDTH * FRAME_HEIGHT];
 
-static void inline fill_scren(int8_t color)
+static void inline fill_screen(int8_t color)
 {
     uint16_t *buf = (uint32_t *)framebuf;
     uint16_t count = FRAME_WIDTH * FRAME_HEIGHT / 2;

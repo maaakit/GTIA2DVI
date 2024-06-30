@@ -59,14 +59,14 @@ struct Menu lumaMenu = {
 
 static inline void redraw_main_menu()
 {
-    fill_scren(BLACK);
+    fill_screen(BLACK);
     draw_text_box(&header);
     set_pos(mainMenu.posX, mainMenu.posY - 12);
     put_text("Main menu");
     draw_menu(&mainMenu);
 
     set_pos(10, 240);
-    put_text(get_commit_info(buf,128));
+    put_text(get_commit_info(buf, 128));
 }
 
 static inline void update_chroma_decode_value()
@@ -125,12 +125,12 @@ void luma_calibration()
 
 void do_chroma_calibration()
 {
-    fill_scren(BLACK);
+    fill_screen(BLACK);
     calibrate_chroma();
 }
 void calibration_diagram()
 {
-    fill_scren(BLACK);
+    fill_screen(BLACK);
     for (int dec = 0; dec < 2048; dec++)
     {
         update_mapping_diagram(dec);
@@ -143,9 +143,10 @@ void calibration_diagram()
 
 void pot_adjust_entry()
 {
-    fill_scren(BLACK);
+    fill_screen(BLACK);
 
     text_block_init(20, 160, 40, 50);
+    text_block_println("Make sure Atari run CALSCR program");
     text_block_println("Turn the potentiometer until the gray");
     text_block_println("bands are at their sharpest.");
     text_block_println("Find the position where yellow dots");
@@ -165,7 +166,7 @@ void pot_adjust_entry()
 
 void chroma_calibration()
 {
-    fill_scren(BLACK);
+    fill_screen(BLACK);
     draw_text_box(&header);
     set_pos(mainMenu.posX, mainMenu.posY - 12);
     put_text("Chroma Calibration");
@@ -174,7 +175,7 @@ void chroma_calibration()
     text_block_println("To perform proper calibration, follow these");
     text_block_println("steps:");
     text_block_println("1) switch to Atari screen.");
-    text_block_println("2) load and run the CALSCR.BAS program");
+    text_block_println("2) load and run the CALSCR program");
     text_block_println("3) wait for it to execute");
     text_block_println("4) go back to this menu and confirm");
     text_block_println("   the calibration");

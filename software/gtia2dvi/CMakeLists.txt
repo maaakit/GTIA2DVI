@@ -1,13 +1,4 @@
 
-set(BUILD_DIR "${CMAKE_BINARY_DIR}/gtia2dvi")
-
-if(EXISTS "${BUILD_DIR}")
-	# Usuń zawartość katalogu build
-	file(REMOVE_RECURSE "${BUILD_DIR}/gtia2dvi_*.*")
-else()
-	message(WARNING "Build directory does not exist: ${BUILD_DIR}")
-endif()
-
 # Pobierz skrót commita
 execute_process(
   COMMAND git rev-parse --short HEAD
@@ -30,40 +21,32 @@ else()
   set(GIT_MODIFIED "1")
 endif()
 
-# Generuj nazwę wyjściowego pliku binarnego
-set(OUTPUT_NAME "gtia2dvi_${GIT_COMMIT_HASH}")
-if(GIT_MODIFIED EQUAL "1")
-  set(OUTPUT_NAME "${OUTPUT_NAME}_dirty")
-endif()
-
-
 # Replace TMDS with 10 bit UART (same baud rate):
 # add_definitions(-DDVI_SERIAL_DEBUG=1)
 # add_definitions(-DRUN_FROM_CRYSTAL)
 
-add_executable(${OUTPUT_NAME} 
+add_executable(gtia2dvi
 	main.c
 )
 
-pico_generate_pio_header(${OUTPUT_NAME}  ${CMAKE_CURRENT_LIST_DIR}/pio/gtia_luma_ng.pio)
-pico_generate_pio_header(${OUTPUT_NAME}  ${CMAKE_CURRENT_LIST_DIR}/pio/gtia_chroma_ng.pio)
-pico_generate_pio_header(${OUTPUT_NAME}  ${CMAKE_CURRENT_LIST_DIR}/pio/gtia_dump.pio)
+pico_generate_pio_header(gtia2dvi ${CMAKE_CURRENT_LIST_DIR}/pio/gtia_luma_ng.pio)
+pico_generate_pio_header(gtia2dvi ${CMAKE_CURRENT_LIST_DIR}/pio/gtia_chroma_ng.pio)
+pico_generate_pio_header(gtia2dvi ${CMAKE_CURRENT_LIST_DIR}/pio/gtia_dump.pio)
 
-target_compile_definitions(${OUTPUT_NAME}  PRIVATE
+target_compile_definitions(gtia2dvi PRIVATE
 	DVI_DEFAULT_SERIAL_CONFIG=${DVI_DEFAULT_SERIAL_CONFIG}
 	)
 
-target_link_libraries(${OUTPUT_NAME}  
+target_link_libraries(gtia2dvi 
 	pico_stdlib
 	pico_multicore
 	hardware_flash
 	libdvi
 )
 # create map/bin/hex file etc.
-pico_add_extra_outputs(${OUTPUT_NAME} )
+pico_add_extra_outputs(gtia2dvi)
 
-#pico_set_binary_type(${OUTPUT_NAME}  no_flash)
-
+#pico_set_binary_type(gtia2dvi no_flash)
 
 
 # Ścieżka do pliku nagłówkowego

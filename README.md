@@ -59,14 +59,18 @@ Dekodowanie sygnału **chroma** jest w fazie eksperymentalnej i może zostać w�
 Urządzenie posiada 3 przyciski:
 
 * **RESET** służący do resetowania
-* **BTN_A** słuzący do aktywacji menu podczas restartu oraz do wybierania opcji menu
-* **BTN_B** służacy do aktywacji wybranej opcj menu
+* **BTN_A** słuzący do aktywacji menu podczas restartu oraz do wybierania opcji menu. Poza menu przełącza tryb wyświetlania mono / color
+* **BTN_B** służacy do aktywacji wybranej opcj menu. Poza menu pełni funkcję stopklatki (zatrzymuje odświerzanie obrazu Atari)
 
 Aby wejść do menu systemowego należy trzymac wciśnięty przycisk **BTN_A** w trakcie restartu urządzenia (za pomocą przycisku reset)
 
 ## Opcje menu
-* Kalibracja sygnału chroma
+
+![](doc/img/main_menu.png)
+
 * Informacja o statusie kalibracji
+* [Kalibracja sygnału chroma](#kalibracja-sygnału-chroma)
+* [Procedura ustawiania potencjometru CADJ](#ustawienie-potencjometru-CADJ)
 * Włączanie / wyłączanie dekodowania
 * Przywrócenie do ustawień fabrycznych
 * Wyjście z menu i powrót do normalnego trybu
@@ -75,11 +79,38 @@ Aby wejść do menu systemowego należy trzymac wciśnięty przycisk **BTN_A** w
 ## Kalibracja sygnału chroma
 
 Należy uruchomić Atari Basic i załadować program CALSCR którego listing znajduje się w folderze `atari`
-Program wyświetla obraz służący do kalibracji. Gdy jego tworzenie zostanie zakończone należy przejść do menu GTIA2DVI.
+Program wyświetla obraz służący do kalibracji. 
+
+![](doc/img/calscr.png)
+
+Gdy jego tworzenie zostanie zakończone należy przejść do menu GTIA2DVI.
 Następnie wybrać opcję `Chroma Calibration` i ją potwierdzić.
 
-W czasie kalibracji na ekranie może się wyświetlać losowa zawartość. W dolnej części ekranu wyświetlany jest pasek postepu.
-Kalibracja wykonywana jest automatycznie a po jej zakończeniu urządzenie się zrestartuje.
+W czasie kalibracji prezentowany jest na żywo aktualny postęp budowania mapy kolorów.
+Proces składa się zdwóch przebiegów i trwa ok. 95 sekund. Po tym czasie urządzenie zapisze zarejestrowane mapy kolorów 
+w automatycznie pamięci FLASH i automatycznie się zrestartuje.
+
+![](doc/img/calib_4.png)
+
+## Ustawienie potencjometru CADJ
+
+W pewnych przypadkach aby uzyskać dobry rezultat kalibracji niezbędne jest dostrojenie potencjometru CADJ.
+W trakcie tego procesu Atari powinno wyświetlać ten sam obraz jak w procesie kalibracji (CALSCR).
+Należy znaleźć takie położenie w którym na obrazie nie występują żółte kropki oraz ilość szarych jest jak najmniejsza.
+Po zakończeniu regulacji należy przycisnąć RESET na płytce GTIA2DVI
+
+![](doc/img/pot_adjust.png)
+
+
+## Dodatkowe wskazówki
+
+Najlepszą jakość wyświetlanego koloru można osiągnąc na płytach które zapewniają niski poziom szumów i zakłóceń sygnałów.
+Dodatkowe rozszerzenia np. U1MB, SIDE2 generują zauważalne zakłócenia w wyświetlanym kolorze
+Pozytywny wpływ na generowany obraz mogą mieć:
+* Zamiana dławika L37 na rezystor 470ohm
+* Wymiana kondensatora C50 na nowy o niskim ESR
+* Wymina potencjometru CADJ (R38) na precyzyjny wieloobrotowy
+* zastosowanie Static RAM (niezweryfikowane)
 
 
 ## Troubleshooting

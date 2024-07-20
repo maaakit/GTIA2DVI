@@ -129,7 +129,7 @@ static inline int8_t __not_in_flash_func(update_if_valid)(int16_t dec, uint16_t 
         if (validate(dec, x, row, col, treshold))
         {
             store_color(row, x, dec, col);
-            update_mapping_diagram_c(dec, x, row, col * 16 + 6);
+            plot_diag_pixel(dec, x, row, col * 16 + 6);
 #if STEP2_LOG_ENABLED
             uart_log_putlnf("%03X %d.%d c:%d ADD", dec, x, row, col);
 #endif
@@ -508,7 +508,7 @@ static inline void __not_in_flash_func(chroma_calibrate_step2)(uint16_t row)
                     if (color > 0)
                     {
                         plotf(i, y, color * 16 + 6);
-                        update_mapping_diagram_c(dec, i, row, color * 16 + 6);
+                        plot_diag_pixel(dec, i, row, color * 16 + 6);
                     }
                     else
                     {

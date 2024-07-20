@@ -133,7 +133,7 @@ void calibration_diagram()
     fill_screen(BLACK);
     for (int dec = 0; dec < 2048; dec++)
     {
-        update_mapping_diagram(dec);
+        dump_mapping_diagram(dec);
     }
     while (true)
     {

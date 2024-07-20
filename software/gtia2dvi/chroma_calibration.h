@@ -5,10 +5,11 @@
 #include "chroma.h"
 #include "chroma_map_diagram.h"
 
-#define SAMPLING_FRAMES 3
+#define SAMPLING_FRAMES 6
 #define STEP2_FRAMES 2048
 #define STEP2_LOG_ENABLED true
 #define CALIB_FINE_TUNE_THRESHOLD 2
+#define CHROMA_SAMPLE_WIDTH_BITS 32
 
 #define ATARI_BASIC_ROW(y) ((y) - 69)
 #define ATARI_BASIC_COLUMN(x) ((x) - app_cfg.chroma_calib_offset)
@@ -28,13 +29,10 @@ uint32_t sample_frame = 0;
 
 static bool err_draw = false;
 
-int16_t color_counts[2][4][15];
+uint32_t color_counts[2][4][15];
 
-static inline void store_color(int row, int x, int16_t decode, int8_t color_index)
+static inline void store_color(int row, int x, uint16_t decode, int8_t color_index)
 {
-    if (decode < 0)
-        return;
-
     if (color_index > 15 || color_index < 0)
         return;
 
@@ -60,11 +58,11 @@ static inline void color_counts_add(int row, int x, int8_t color_index)
     color_counts[row % 2][x & 0x3][color_index]++;
 }
 
-static inline void color_counts_process(int row, uint16_t current_sample)
+static inline void color_counts_process(int row, uint16_t enc_smpl)
 {
-    int mod_row = row % 2;
-    int mod_x = (row / 2) & 0x3;
-    int max_i = 0, max_cnt = 0, prev_i = 0, prev_cnt = 0;
+    uint16_t mod_row = row % 2;
+    uint16_t mod_x = (row / 2) & 0x3;
+    uint16_t max_i = 0, max_cnt = 0, prev_i = 0, prev_cnt = 0;
 
     for (int i = 0; i < 15; i++)
     {
@@ -78,11 +76,11 @@ static inline void color_counts_process(int row, uint16_t current_sample)
     }
     if (max_i > 0)
     {
-        store_color(mod_row, mod_x, current_sample, max_i);
+        store_color(mod_row, mod_x, enc_smpl, max_i);
         if (prev_i > 0)
-            sprintf(buf, "s:%03X r:%d x:%d c:%d ~%d ALT:%d ~%d", current_sample, mod_row, mod_x, max_i, max_cnt, prev_i, prev_cnt);
+            sprintf(buf, "s:%03X %01d.%02d.%02d r:%d x:%d c:%d ~%d ALT:%d ~%d", enc_smpl, DEC_F(enc_smpl), DEC_A(enc_smpl), DEC_B(enc_smpl), mod_row, mod_x, max_i, max_cnt, prev_i, prev_cnt);
         else
-            sprintf(buf, "s:%03X r:%d x:%d c:%d ~%d", current_sample, mod_row, mod_x, max_i, max_cnt);
+            sprintf(buf, "s:%03X %01d.%02d.%02d r:%d x:%d c:%d ~%d", enc_smpl, DEC_F(enc_smpl), DEC_A(enc_smpl), DEC_B(enc_smpl), mod_row, mod_x, max_i, max_cnt);
         uart_log_putln(buf);
     }
 }
@@ -90,13 +88,11 @@ static inline void color_counts_process(int row, uint16_t current_sample)
 static inline void chroma_calibration_init()
 {
     for (int x = 0; x < 2048; x++)
-    {
         for (int y = 0; y < 4; y++)
         {
             calibration_data[0][y][x] = -1;
             calibration_data[1][y][x] = -1;
         }
-    }
 }
 
 static inline bool validate(int16_t dec, uint16_t x, uint16_t row, int8_t color, int treshold)
@@ -135,16 +131,14 @@ static inline int8_t __not_in_flash_func(update_if_valid)(int16_t dec, uint16_t 
             store_color(row, x, dec, col);
             update_mapping_diagram_c(dec, x, row, col * 16 + 6);
 #if STEP2_LOG_ENABLED
-            sprintf(buf, "%03X %d.%d c:%d ADD", dec, x, row, col);
-            uart_log_putln(buf);
+            uart_log_putlnf("%03X %d.%d c:%d ADD", dec, x, row, col);
 #endif
             return col;
         }
         else
         {
 #if STEP2_LOG_ENABLED
-            sprintf(buf, "%03X %d.%d c:%d t:%d BAD", dec, x, row, col, treshold);
-            uart_log_putln(buf);
+            uart_log_putlnf("%03X %01d.%02d.%02d %d.%d c:%d t:%d BAD", dec, DEC_F(dec), DEC_A(dec), DEC_B(dec), x, row, col, treshold);
 #endif
             return -1;
         }
@@ -322,12 +316,11 @@ static inline bool process_registered_chroma_data(uint16_t row)
             {
                 // draw progress bar
                 plotf(8 + (current_sample / 8), 270 + (current_sample % 8), GREEN);
-
                 current_sample++;
                 // skip unexpected a and b values
                 a = DEC_A(current_sample);
                 b = DEC_B(current_sample);
-            } while (a + b > 28);
+            } while (a + b > CHROMA_SAMPLE_WIDTH_BITS);
             sample_frame = 0;
             return false;
         }
@@ -391,6 +384,12 @@ static inline void __not_in_flash_func(chroma_calibrate_step1)(uint16_t row)
                 {
                     if (dec == current_sample)
                     {
+                        if (DEC_A(dec) + DEC_B(dec) > CHROMA_SAMPLE_WIDTH_BITS)
+                        {
+                            uart_log_putlnf("assrtion error >32 %08X  %d.%02d.%02d  ", sample, DEC_F(dec), DEC_A(dec), DEC_B(dec));
+                            break;
+                        }
+
                         int atari_column = i - app_cfg.chroma_calib_offset;
                         uint8_t col = 1 + atari_column / 10;
                         if (col == 15)

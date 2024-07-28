@@ -78,10 +78,9 @@ static inline void color_counts_process(int row, uint16_t enc_smpl)
     {
         store_color(mod_row, mod_x, enc_smpl, max_i);
         if (prev_i > 0)
-            sprintf(buf, "s:%03X %01d.%02d.%02d r:%d x:%d c:%d ~%d ALT:%d ~%d", enc_smpl, DEC_F(enc_smpl), DEC_A(enc_smpl), DEC_B(enc_smpl), mod_row, mod_x, max_i, max_cnt, prev_i, prev_cnt);
+            uart_log_putlnf("s:%03X %01d.%02d.%02d r:%d x:%d c:%d ~%d ALT:%d ~%d", enc_smpl, DEC_F(enc_smpl), DEC_A(enc_smpl), DEC_B(enc_smpl), mod_row, mod_x, max_i, max_cnt, prev_i, prev_cnt);
         else
-            sprintf(buf, "s:%03X %01d.%02d.%02d r:%d x:%d c:%d ~%d", enc_smpl, DEC_F(enc_smpl), DEC_A(enc_smpl), DEC_B(enc_smpl), mod_row, mod_x, max_i, max_cnt);
-        uart_log_putln(buf);
+            uart_log_putlnf("s:%03X %01d.%02d.%02d r:%d x:%d c:%d ~%d", enc_smpl, DEC_F(enc_smpl), DEC_A(enc_smpl), DEC_B(enc_smpl), mod_row, mod_x, max_i, max_cnt);
     }
 }
 
@@ -223,8 +222,7 @@ static __noinline int8_t _calculate_chroma_phase_adjust()
     for (int i = 0; i < 4; i++)
     {
         uint16_t dec0 = decode_intr(chroma_buf[buf_seq][i + 4]);
-        sprintf(buf, " %04X %d.%d.%d ", dec0, DEC_F(dec0), DEC_A(dec0), DEC_B(dec0));
-        uart_log_putln(buf);
+        uart_log_putlnf(" %04X %d.%d.%d ", dec0, DEC_F(dec0), DEC_A(dec0), DEC_B(dec0));
         uart_log_flush();
 
         dec_tmp[i] = dec0;
@@ -255,8 +253,7 @@ static __noinline int8_t _calculate_chroma_phase_adjust()
         return -1;
     }
 
-    sprintf(buf, "calculated adjustment: %d", calib_data_adjustment);
-    uart_log_putln(buf);
+    uart_log_putlnf("calculated adjustment: %d", calib_data_adjustment);
 
     return calib_data_adjustment;
 }
@@ -266,8 +263,7 @@ static __noinline void calibration_data_adjust(uint8_t adj)
     if (adj == 0)
         return;
 
-    sprintf(buf, " applying chroma data phase shift adjustment: %d", adj);
-    uart_log_putln(buf);
+    uart_log_putlnf(" applying chroma data phase shift adjustment: %d", adj);
 
     uint8_t tmp[4];
     for (int j = 0; j < 2; j++)
@@ -278,7 +274,7 @@ static __noinline void calibration_data_adjust(uint8_t adj)
             for (int i = 0; i < 4; i++)
                 calibration_data[j][(i + adj) & 0x3][k] = tmp[i];
         }
-    uart_log_putln(" adjustmend aplied");
+    uart_log_putln(" adjustmend applied");
 }
 
 static __noinline void _save()
@@ -481,8 +477,7 @@ static inline void __not_in_flash_func(chroma_calibrate_step2)(uint16_t row)
         if (ATARI_BASIC_ROW(row) < 90 || ATARI_BASIC_ROW(row) >= 100)
             if (chroma_buf[buf_seq][app_cfg.chroma_calib_offset - 1] != 0 || chroma_buf[buf_seq][app_cfg.chroma_calib_offset] == 0)
             {
-                sprintf(buf, "bad row: %d", row);
-                uart_log_putln(buf);
+                uart_log_putlnf("bad row: %d", row);
                 return;
             }
 
@@ -555,8 +550,7 @@ static inline void __not_in_flash_func(geometry_check)(uint16_t row)
                 calib_error("ERR BAD_GEO_02", "");
             else
             {
-                sprintf(buf, "geometry setup: chroma_calib_offset found at: %d", chroma_calib_offset_tmp);
-                uart_log_putln(buf);
+                uart_log_putlnf("geometry setup: chroma_calib_offset found at: %d", chroma_calib_offset_tmp);
                 app_cfg.chroma_calib_offset = chroma_calib_offset_tmp;
                 c_step = STEP1;
                 return;

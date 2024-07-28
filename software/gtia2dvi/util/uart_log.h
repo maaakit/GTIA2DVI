@@ -100,7 +100,7 @@ static __noinline void __not_in_flash_func(uart_log_putln)(char *s)
 
 static __noinline void __not_in_flash_func(uart_log_putlnf)(const char *format, ...)
 {
-    char buf[128]; 
+    static char buf[128]; 
     va_list args;
     va_start(args, format);
     vsnprintf(buf, sizeof(buf), format, args); 

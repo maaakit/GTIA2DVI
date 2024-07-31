@@ -12,6 +12,7 @@
 #include "util/uart_log.h"
 #include "gtia_dump.h"
 #include "git_info.h"
+#include "gtia_pal_gen.pio.h"
 
 int main()
 {
@@ -79,6 +80,10 @@ int main()
 
 	sleep_ms(100);
 	setup_display();
+
+
+	 uint o = pio_add_program(pio0, &gtia_pal_gen_program);
+     gtia_pal_gen_program_init(pio0, 3, o);
 
 	if (menu_requested || FORCE_MENU)
 	{

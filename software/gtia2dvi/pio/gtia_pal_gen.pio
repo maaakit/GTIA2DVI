@@ -1,0 +1,68 @@
+
+.program gtia_pal_gen
+.define CSYNC_PIN  4
+.define OSC_PIN    5
+
+.define delay0      31
+.define delay1      31
+
+    wait 0 gpio CSYNC_PIN
+    wait 1 gpio CSYNC_PIN
+.wrap_target
+    wait 1 gpio OSC_PIN
+
+    set pins 0 [delay0]
+    set pins 1 [delay1]
+
+    set pins 0 [delay0]
+    set pins 1 [delay1]
+
+    set pins 0 [delay0]
+    set pins 1 [delay1]
+
+    set pins 0 [delay0]
+    set pins 1 [delay1]
+
+    set pins 0 [delay0]
+    set pins 1 [delay1]
+ .wrap
+
+
+
+% c-sdk {
+#include "hardware/clocks.h"
+#include "hardware/gpio.h"
+
+#define CSYNC_PIN 4
+#define OSC_PIN    5
+
+#define INPUT_PINS_MASK  0xff
+#define GTIA_LUM_NODATA   0xff
+
+#define SYS_CLOCK       295.2f
+
+
+#define PAL_GEN_OUT_PIN     22
+
+static inline void gtia_pal_gen_program_init(PIO pio_inst, uint sm, uint offset) {
+   pio_gpio_init(pio_inst, PAL_GEN_OUT_PIN);
+   pio_sm_set_consecutive_pindirs(pio_inst, sm, PAL_GEN_OUT_PIN, 1, true);
+
+    ;// load program
+    pio_sm_config c = gtia_pal_gen_program_get_default_config(offset);
+
+       sm_config_set_set_pins(&c, PAL_GEN_OUT_PIN, 1);
+
+    sm_config_set_clkdiv(&c, 1.0f  );
+
+
+    ;// init program
+    pio_sm_init(pio_inst, sm, offset, &c);
+
+    ;// start program
+    pio_sm_set_enabled(pio_inst, sm, true);
+
+}
+
+
+%}

@@ -1,5 +1,5 @@
 
-.program gtia_chroma_ng
+.program gtia_burst
 .define CSYNC_PIN   4
 .define OSC_PIN     5
 .define PAL_PIN     6
@@ -26,18 +26,19 @@
 #define sample_size_bits    32
 
 
-static inline void gtia_chroma_ng_program_init(uint sm, uint offset, uint32_t line_length_bytes) {
+static inline void gtia_burst_program_init(uint sm, uint offset) {
     ;// load program
-    pio_sm_config c = gtia_chroma_ng_program_get_default_config(offset);
+    pio_sm_config c = gtia_burst_program_get_default_config(offset);
     ;// set first program pin index
     sm_config_set_in_pins(&c, CSYNC_PIN); // for WAIT, IN
     ;//sm_config_set_jmp_pin(&c, CSYNC_PIN);
   
     ;// configure autopush  
-    ;//sm_config_set_in_shift(&c, false, true, sample_size_bits);
-    sm_config_set_out_shift(&c, false, false, 32);
+    sm_config_set_in_shift(&c, true, true, 32);
+    ;//sm_config_set_out_shift(&c, false, false, 32);
 
     sm_config_set_clkdiv(&c, CLK_DIVIDIER );
+    sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_RX);
 
     ;// init program
     pio_sm_init(pio1, sm, offset, &c);
@@ -46,7 +47,7 @@ static inline void gtia_chroma_ng_program_init(uint sm, uint offset, uint32_t li
     ;//pio_sm_exec  (pio1, sm, 0x80a0);  //initial setup -> pull
 
     ;// start program
-    pio_sm_set_enabled(pio1, sm, true);
+    pio_sm_set_enabled(pio1, sm, false);
 }
 
 %}

@@ -9,9 +9,10 @@
 #ifndef VIDEO_CHANNEL_H
 #define VIDEO_CHANNEL_H
 
+#define GTIA_PIO pio1
 #define GTIA_LUMA_SM 0
 #define GTIA_COLOR_SM 1
-#define PIO_LUMA pio1
+
 #define LUMA_DMA_CHANNEL 10
 #define CHROMA_DMA_CHANNEL 11
 #define LUMA_LINE_LENGTH_BYTES 206
@@ -27,24 +28,26 @@ static inline void _setup_gtia_interface()
 
     dma_channel_config c = dma_channel_get_default_config(LUMA_DMA_CHANNEL);
     channel_config_set_transfer_data_size(&c, DMA_SIZE_32);
-    channel_config_set_dreq(&c, pio_get_dreq(PIO_LUMA, GTIA_LUMA_SM, false));
+    channel_config_set_dreq(&c, pio_get_dreq(GTIA_PIO, GTIA_LUMA_SM, false));
     channel_config_set_read_increment(&c, false);
     channel_config_set_write_increment(&c, true);
-    dma_channel_configure(LUMA_DMA_CHANNEL, &c, &luma_buf, &PIO_LUMA->rxf[GTIA_LUMA_SM], (LUMA_LINE_LENGTH_BYTES + 2) / 4, false);
+    dma_channel_configure(LUMA_DMA_CHANNEL, &c, &luma_buf, &GTIA_PIO->rxf[GTIA_LUMA_SM], (LUMA_LINE_LENGTH_BYTES + 2) / 4, false);
 
     dma_channel_config c2 = dma_channel_get_default_config(CHROMA_DMA_CHANNEL);
     channel_config_set_transfer_data_size(&c2, DMA_SIZE_32);
     channel_config_set_dreq(&c2, pio_get_dreq(pio1, GTIA_COLOR_SM, false));
     channel_config_set_read_increment(&c2, false);
     channel_config_set_write_increment(&c2, true);
-    dma_channel_configure(CHROMA_DMA_CHANNEL, &c2, &chroma_buf, &pio1->rxf[GTIA_COLOR_SM], CHROMA_LINE_LENGTH, false);
+    dma_channel_configure(CHROMA_DMA_CHANNEL, &c2, &chroma_buf, &GTIA_PIO->rxf[GTIA_COLOR_SM], CHROMA_LINE_LENGTH, false);
 
-    pio_sm_restart(PIO_LUMA, GTIA_LUMA_SM);
-    pio_sm_restart(pio1, GTIA_COLOR_SM);
-    uint offset_lm = pio_add_program(PIO_LUMA, &gtia_luma_ng_program);
-    uint offset_ch = pio_add_program(pio1, &gtia_chroma_ng_program);
+    pio_sm_restart(GTIA_PIO, GTIA_LUMA_SM);
+    pio_sm_restart(GTIA_PIO, GTIA_COLOR_SM);
+    uint offset_lm = pio_add_program(GTIA_PIO, &gtia_luma_ng_program);
+    uint offset_ch = pio_add_program(GTIA_PIO, &gtia_chroma_ng_program);
     gtia_chroma_ng_program_init(GTIA_COLOR_SM, offset_ch, CHROMA_LINE_LENGTH);
-    gtia_luma_ng_program_init(PIO_LUMA, GTIA_LUMA_SM, offset_lm, LUMA_LINE_LENGTH_BYTES);
+    gtia_luma_ng_program_init(GTIA_PIO, GTIA_LUMA_SM, offset_lm, LUMA_LINE_LENGTH_BYTES);
+
+    burst_init();
 }
 
 static inline void _wait_and_restart_dma()

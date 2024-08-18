@@ -98,6 +98,17 @@ static __noinline void __not_in_flash_func(uart_log_putln)(char *s)
     uart_log_put("\n");
 }
 
+static __noinline void __not_in_flash_func(uart_log_putf)(const char *format, ...)
+{
+    static char buf[128]; 
+    va_list args;
+    va_start(args, format);
+    vsnprintf(buf, sizeof(buf), format, args); 
+    va_end(args);
+
+    uart_log_put(buf);
+}
+
 static __noinline void __not_in_flash_func(uart_log_putlnf)(const char *format, ...)
 {
     static char buf[128]; 

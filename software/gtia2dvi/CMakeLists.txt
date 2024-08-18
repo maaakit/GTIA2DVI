@@ -33,6 +33,7 @@ pico_generate_pio_header(gtia2dvi ${CMAKE_CURRENT_LIST_DIR}/pio/gtia_luma_ng.pio
 pico_generate_pio_header(gtia2dvi ${CMAKE_CURRENT_LIST_DIR}/pio/gtia_chroma_ng.pio)
 pico_generate_pio_header(gtia2dvi ${CMAKE_CURRENT_LIST_DIR}/pio/gtia_dump.pio)
 pico_generate_pio_header(gtia2dvi ${CMAKE_CURRENT_LIST_DIR}/pio/gtia_pal_gen.pio)
+pico_generate_pio_header(gtia2dvi ${CMAKE_CURRENT_LIST_DIR}/pio/gtia_burst.pio)
 
 target_compile_definitions(gtia2dvi PRIVATE
 	DVI_DEFAULT_SERIAL_CONFIG=${DVI_DEFAULT_SERIAL_CONFIG}

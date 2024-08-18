@@ -19,6 +19,7 @@ count_low_csync_cycles:
 .wrap
 send_data_with_line_num:
     irq 0
+    irq 1
     in  Y 16                                ; send 16 bits of ROW_CNT (negative value)
     mov X OSR                               ; move number of ecpected bytes from OSR to X register
 pixel_loop:

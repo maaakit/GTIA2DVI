@@ -90,14 +90,14 @@ void gtia_dump_process()
 
     dma_channel_config c = dma_channel_get_default_config(LUMA_DMA_CHANNEL);
     channel_config_set_transfer_data_size(&c, DMA_SIZE_32);
-    channel_config_set_dreq(&c, pio_get_dreq(PIO_LUMA, GTIA_LUMA_SM, false));
+    channel_config_set_dreq(&c, pio_get_dreq(GTIA_PIO, GTIA_LUMA_SM, false));
     channel_config_set_read_increment(&c, false);
     channel_config_set_write_increment(&c, true);
-    dma_channel_configure(LUMA_DMA_CHANNEL, &c, &gtia_dump_data, &PIO_LUMA->rxf[GTIA_LUMA_SM], (GTIA_DUMP_BUFFER_SIZE_BYTES) / 4, true);
+    dma_channel_configure(LUMA_DMA_CHANNEL, &c, &gtia_dump_data, &GTIA_PIO->rxf[GTIA_LUMA_SM], (GTIA_DUMP_BUFFER_SIZE_BYTES) / 4, true);
 
-    pio_sm_restart(PIO_LUMA, GTIA_LUMA_SM);
-    uint offset_lm = pio_add_program(PIO_LUMA, &gtia_dump_program);
-    gtia_dump_program_init(PIO_LUMA, GTIA_LUMA_SM, offset_lm, requested_line - 1);
+    pio_sm_restart(GTIA_PIO, GTIA_LUMA_SM);
+    uint offset_lm = pio_add_program(GTIA_PIO, &gtia_dump_program);
+    gtia_dump_program_init(GTIA_PIO, GTIA_LUMA_SM, offset_lm, requested_line - 1);
 
     // wait for both DMA channels
     dma_channel_wait_for_finish_blocking(LUMA_DMA_CHANNEL);

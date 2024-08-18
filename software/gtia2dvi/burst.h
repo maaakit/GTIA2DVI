@@ -17,8 +17,6 @@ struct BurstArray
 
 struct BurstArray lineBurst[2];
 
-// struct BurstArray data = {.size = 0};
-
 void addOrUpdate(struct BurstArray *data, uint16_t dec)
 {
     size_t i;
@@ -60,30 +58,98 @@ void addOrUpdate(struct BurstArray *data, uint16_t dec)
 
 static inline void burst_clear()
 {
-    lineBurst[0].size = 0;
-    lineBurst[1].size = 0;
+    for (int j = 0; j < 2; j++)
+    {
+        for (int i = 0; i < lineBurst[j].size; i++)
+        {
+            lineBurst[j].array[i].dec = 0;
+            lineBurst[j].array[i].count = 0;
+        }
+        lineBurst[j].size = 0;
+    }
 }
 
 #define VAL_F(x) (x & 0x1)
 #define VAL_A(x) ((x >> 1) & 0x1f)
 #define VAL_B(x) ((x >> 6) & 0x1f)
 
+struct _Pair
+{
+    uint value;
+    uint weight;
+};
+
+float weighted_average(struct _Pair *array)
+{
+    int sum_weights = 0;
+    int sum_values = 0;
+
+    // Oblicz sumę ważoną i sumę wartości
+    for (int i = 0; i < 3; i++)
+    {
+        sum_weights += array[i].value * array[i].weight;
+        sum_values += array[i].weight;
+        array[i].weight = 0;
+        array[i].value = 0;
+    }
+
+    // Jeżeli suma wartości jest większa od zera, oblicz średnią ważoną
+    if (sum_values != 0)
+    {
+        return (float)sum_weights / sum_values;
+    }
+    else
+    {
+        return 0.0; // Unikamy dzielenia przez zero
+    }
+}
+
 static inline void burst_analyze(int row)
 {
+    struct _Pair tmp_burst[3];
+
+    if (row != 310)
+        return;
 
     if (frame_count % 500 == 0)
     {
         // output data
         uint16_t dec0 = lineBurst[row % 2].array[0].dec;
         uint16_t dec1 = lineBurst[row % 2].array[1].dec;
+        uint16_t dec2 = lineBurst[row % 2].array[2].dec;
 
-        sprintf(buf, "burst %d %d.%d.%d->%d, %d.%d.%d->%d", row % 2, VAL_F(dec0), VAL_A(dec0), VAL_B(dec0), lineBurst[row % 2].array[0].count, VAL_F(dec1), VAL_A(dec1), VAL_B(dec1), lineBurst[row % 2].array[1].count);
-        uart_log_putln(buf);
+    //    uart_log_putlnf("burst %d %d.%d.%d->%d, %d.%d.%d->%d, %d.%d.%d->%d", row % 2, 
+        // VAL_F(dec0), VAL_A(dec0), VAL_B(dec0), lineBurst[row % 2].array[0].count, 
+        // VAL_F(dec1), VAL_A(dec1), VAL_B(dec1), lineBurst[row % 2].array[1].count,
+        // VAL_F(dec2), VAL_A(dec2), VAL_B(dec2), lineBurst[row % 2].array[2].count);
 
+
+
+        tmp_burst[0].value = VAL_A(dec0);
+        tmp_burst[0].weight = lineBurst[row % 2].array[0].count;
+        tmp_burst[1].value = VAL_A(dec1);
+        tmp_burst[1].weight = lineBurst[row % 2].array[1].count;
+        tmp_burst[2].value = VAL_A(dec2);
+        tmp_burst[2].weight = lineBurst[row % 2].array[2].count;
+
+        float bf_a = weighted_average(tmp_burst);
+
+        tmp_burst[0].value = VAL_B(dec0);
+        tmp_burst[0].weight = lineBurst[row % 2].array[0].count;
+        tmp_burst[1].value = VAL_B(dec1);
+        tmp_burst[1].weight = lineBurst[row % 2].array[1].count;
+        tmp_burst[2].value = VAL_B(dec2);
+        tmp_burst[2].weight = lineBurst[row % 2].array[2].count;
+
+        float bf_b = weighted_average(tmp_burst);
+
+        uart_log_putlnf("burst: %d %02.02f %02.02f", VAL_F(dec0), bf_a, bf_b);
+
+        
         burst_clear();
     }
     for (int i = 0; i < 3; i++)
-        addOrUpdate(&lineBurst[row % 2], decode_intr(chroma_buf[buf_seq][2 + i * 4]));
+        addOrUpdate(&lineBurst[row % 2], decode_intr(chroma_buf[buf_seq][0 + i * 4]));
 }
 
 #endif

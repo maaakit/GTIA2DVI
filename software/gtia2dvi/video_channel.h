@@ -252,10 +252,7 @@ void __not_in_flash_func(process_video_stream)()
         // pio returns line as negative number so we must correct this
         row = -luma_buf[0];
 
-        if (row == 8 || row == 9)
-        {
-            burst_analyze(row);
-        }
+        burst_analyze(row);
 
         if (row == 10)
         {

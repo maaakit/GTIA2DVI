@@ -14,7 +14,7 @@
 pixel_loop:
     set Y    ((sample_size_bits / 2) - 1)
     wait 1 gpio OSC_PIN
-    wait 0 gpio OSC_PIN  
+    wait 0 gpio OSC_PIN 
 bit_loop:
     in      pins 1   
     in      pins 1   

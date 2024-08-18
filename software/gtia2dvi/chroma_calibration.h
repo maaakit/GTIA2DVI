@@ -4,9 +4,10 @@
 #include "gfx/gfx_text.h"
 #include "chroma.h"
 #include "chroma_map_diagram.h"
+#include "burst.h"
 
-#define SAMPLING_FRAMES 6
-#define STEP2_FRAMES 2048
+#define SAMPLING_FRAMES 4
+#define STEP2_FRAMES 512
 #define STEP2_LOG_ENABLED true
 #define CALIB_FINE_TUNE_THRESHOLD 2
 #define CHROMA_SAMPLE_WIDTH_BITS 32
@@ -446,7 +447,7 @@ static inline void __not_in_flash_func(chroma_calibrate_step2)(uint16_t row)
     {
         fine_tuned = false;
         // draw progress bar
-        plotf(8 + (sample_frame / (STEP2_FRAMES / 2048) / 8), 270 + (sample_frame % 8), BLUE);
+        plotf(8 + (sample_frame / (STEP2_FRAMES / 256) ), 270 + (sample_frame % 8), BLUE);
 
         if (sample_frame < STEP2_FRAMES)
         {
@@ -590,6 +591,8 @@ static inline void __not_in_flash_func(geometry_check)(uint16_t row)
 
 static inline void __not_in_flash_func(chroma_calibrate)(uint16_t row)
 {
+    burst_analyze(row);
+
     switch (c_step)
     {
     case GEOMETRY_CHECK:

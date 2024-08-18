@@ -1,0 +1,52 @@
+
+.program gtia_chroma_ng
+.define CSYNC_PIN   4
+.define OSC_PIN     5
+.define PAL_PIN     6
+.define COLOR_PIN   7
+
+
+    wait 1 irq 1
+.wrap_target
+    in      pins 4  
+.wrap
+
+
+
+
+% c-sdk {
+#include "hardware/clocks.h"
+#include "hardware/gpio.h"
+
+#define CSYNC_PIN           4
+#define OSC_PIN             5
+#define PAL_PIN             6
+#define COLOR_PIN           7
+#define CLK_DIVIDIER        1.0f 
+#define sample_size_bits    32
+
+
+static inline void gtia_chroma_ng_program_init(uint sm, uint offset, uint32_t line_length_bytes) {
+    ;// load program
+    pio_sm_config c = gtia_chroma_ng_program_get_default_config(offset);
+    ;// set first program pin index
+    sm_config_set_in_pins(&c, CSYNC_PIN); // for WAIT, IN
+    ;//sm_config_set_jmp_pin(&c, CSYNC_PIN);
+  
+    ;// configure autopush  
+    ;//sm_config_set_in_shift(&c, false, true, sample_size_bits);
+    sm_config_set_out_shift(&c, false, false, 32);
+
+    sm_config_set_clkdiv(&c, CLK_DIVIDIER );
+
+    ;// init program
+    pio_sm_init(pio1, sm, offset, &c);
+  
+    ;//pio1->txf[sm] = line_length_bytes-1 ;
+    ;//pio_sm_exec  (pio1, sm, 0x80a0);  //initial setup -> pull
+
+    ;// start program
+    pio_sm_set_enabled(pio1, sm, true);
+}
+
+%}

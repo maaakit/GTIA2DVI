@@ -5,7 +5,7 @@
 .define PAL_PIN     6
 .define COLOR_PIN   7
 
-
+    irq clear 1
     wait 1 irq 1
 .wrap_target
     in      pins 4  

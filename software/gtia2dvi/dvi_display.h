@@ -8,6 +8,7 @@
 #include "tmds_encode.h"
 #include "tmds_table_256.h"
 #include "gtia_palette.h"
+#include "hardware/clocks.h"
 
 extern const struct dvi_timing dvi_timing_768x576p_50hz;
 

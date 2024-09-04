@@ -50,14 +50,31 @@ static inline void _setup_gtia_interface()
     burst_init();
 }
 
-static inline void _wait_and_restart_dma()
+static inline void _wait_and_restart_dma(int prev_row)
 {
+
+    if (prev_row == 307)
+    {
+      //  pio_sm_restart(GTIA_PIO, BURST_SM);
+        pio_sm_restart(GTIA_PIO, BURST_SM);
+        pio_sm_clear_fifos(GTIA_PIO, BURST_SM);
+    
+        pio_sm_exec(GTIA_PIO, BURST_SM, pio_encode_jmp(offset_burst_prg));
+        dma_channel_set_write_addr(BURST_DMA_CHANNEL, &burst_data, true);
+        pio_sm_set_enabled(GTIA_PIO, BURST_SM, true);
+    }
+    else
+    {
+        pio_sm_set_enabled(GTIA_PIO, BURST_SM, false);
+    }
+
     // wait for both DMA channels
     dma_channel_wait_for_finish_blocking(LUMA_DMA_CHANNEL);
     dma_channel_wait_for_finish_blocking(CHROMA_DMA_CHANNEL);
     // restart DMA channels
     dma_channel_set_write_addr(CHROMA_DMA_CHANNEL, &chroma_buf[buf_seq], true);
     dma_channel_set_write_addr(LUMA_DMA_CHANNEL, &luma_buf, true);
+    // dma_channel_set_write_addr(BURST_DMA_CHANNEL, &burst_data, true);
 
     buf_seq = (buf_seq + 1) % 2;
 }
@@ -196,13 +213,13 @@ static inline void _prepare_calibration_data()
     // wait at least one frame (for reset row counter)
     for (int i = 0; i < 1000; i++)
     {
-        _wait_and_restart_dma();
+        _wait_and_restart_dma(100);
     }
 
     // wait for even row larger than 10
     do
     {
-        _wait_and_restart_dma();
+        _wait_and_restart_dma(100);
         row = -luma_buf[0];
     } while (row % 2 || row < 10);
 
@@ -251,7 +268,7 @@ void __not_in_flash_func(process_video_stream)()
             uart_log_putln("BTN_B");
         }
 
-        _wait_and_restart_dma();
+        _wait_and_restart_dma(row);
         // pio returns line as negative number so we must correct this
         row = -luma_buf[0];
 
@@ -307,7 +324,7 @@ void __not_in_flash_func(calibrate_chroma)()
 
     while (true)
     {
-        _wait_and_restart_dma();
+        _wait_and_restart_dma(row);
 
         row = -luma_buf[0];
         if (row == 10)
@@ -332,7 +349,7 @@ void __noinline __not_in_flash_func(pot_adjust)()
 
     while (true)
     {
-        _wait_and_restart_dma();
+        _wait_and_restart_dma(row);
 
         row = -luma_buf[0];
         if (row == 10)

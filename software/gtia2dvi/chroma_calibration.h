@@ -447,18 +447,18 @@ static inline void __not_in_flash_func(chroma_calibrate_step2)(uint16_t row)
     {
         fine_tuned = false;
         // draw progress bar
-        plotf(8 + (sample_frame / (STEP2_FRAMES / 256) ), 270 + (sample_frame % 8), BLUE);
+        plotf(8 + (sample_frame / (STEP2_FRAMES / 256)), 270 + (sample_frame % 8), BLUE);
 
         if (sample_frame < STEP2_FRAMES)
         {
-            if (extended == false && btn_is_down(BTN_B))
+            if (extended == false && btn_event_index(btn_last_event()) == BTN_B)
             {
                 extended = true;
                 uart_log_putln("extended calibration enabled");
             }
         }
 
-        if (sample_frame > STEP2_FRAMES && (btn_is_down(BTN_B) || extended == false))
+        if (sample_frame > STEP2_FRAMES && (btn_event_index(btn_last_event()) == BTN_B || extended == false))
         {
             uart_log_putln("calibration finished");
             c_step = SAVE;

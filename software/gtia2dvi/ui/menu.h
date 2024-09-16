@@ -39,9 +39,9 @@ static inline int menu_item_pos_y(struct Menu *menu, int item)
 
 static inline void update_menu(struct Menu *menu)
 {
-    enum BtnEvent btn = btn_last_event();
+    int btn = btn_last_event();
 
-    if (btn == BTN_A_SHORT)
+    if (btn_event_index(btn) == BTN_A)
     {
         menu->currentItem++;
         if (menu->currentItem >= menu->itemCount)
@@ -49,7 +49,7 @@ static inline void update_menu(struct Menu *menu)
             menu->currentItem = 0;
         }
     }
-    if (btn == BTN_B_SHORT)
+    if (btn_event_index(btn) == BTN_B)
     {
         menu->items[menu->currentItem].functionPointer();
     }

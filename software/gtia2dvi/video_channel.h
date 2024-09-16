@@ -55,10 +55,10 @@ static inline void _wait_and_restart_dma(int prev_row)
 
     if (prev_row == 307)
     {
-      //  pio_sm_restart(GTIA_PIO, BURST_SM);
+        //  pio_sm_restart(GTIA_PIO, BURST_SM);
         pio_sm_restart(GTIA_PIO, BURST_SM);
         pio_sm_clear_fifos(GTIA_PIO, BURST_SM);
-    
+
         pio_sm_exec(GTIA_PIO, BURST_SM, pio_encode_jmp(offset_burst_prg));
         dma_channel_set_write_addr(BURST_DMA_CHANNEL, &burst_data, true);
         pio_sm_set_enabled(GTIA_PIO, BURST_SM, true);
@@ -256,14 +256,14 @@ void __not_in_flash_func(process_video_stream)()
 
     while (true)
     {
-        enum BtnEvent btn = btn_last_event();
+        int btn = btn_last_event();
 
-        if (btn == BTN_A_SHORT && preset_loaded)
+        if (btn_event_index(btn) == BTN_A && preset_loaded)
         {
             app_cfg.enableChroma = !app_cfg.enableChroma;
             uart_log_putln("BTN_A");
         }
-        if (btn == BTN_B_SHORT)
+        if (btn_event_index(btn) == BTN_B)
         {
             uart_log_putln("BTN_B");
         }
